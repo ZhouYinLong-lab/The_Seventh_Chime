@@ -8,31 +8,34 @@
 
 ## 1. 风格方案
 
-深海档案室：暗色、低饱和纸张材质与克制的警示色。界面应像可检索的站内记录，不模拟老旧电脑，也不以故障特效遮挡文本。
+黑潮证据室：以 320×180 逻辑网格转译的像素档案工作台。深海军蓝承载查询与推理，盐纸色承载档案阅读；界面像可检索的机构记录，不模拟老旧电脑，也不以故障特效遮挡文本。
 
 ## 2. 配色方案
 
 | Token | Hex | 用途 |
 |---|---|---|
-| `--bg-primary` | `#0e151a` | 页面背景 |
-| `--bg-secondary` | `#17242a` | 面板 |
-| `--accent-primary` | `#d7aa65` | 可操作强调 |
-| `--accent-secondary` | `#7eb8ba` | 已确认客观事实 |
-| `--text-primary` | `#f2eee3` | 正文 |
-| `--text-secondary` | `#b9c4c1` | 辅助文本 |
+| `--bg-primary` | `#071625` | 深海工作台背景 |
+| `--bg-secondary` | `#0b2235` | 查询与推理面板 |
+| `--paper` | `#e8dfca` | 档案阅读面 |
+| `--accent-primary` | `#c69b4d` | 键盘焦点、当前钟次与可操作控件 |
+| `--accent-secondary` | `#8daeb0` | 已确认客观地点事实 |
+| `--signal` | `#62b8a0` | 仅 B4 后可用的假设工具 |
+| `--danger` | `#bd5a52` | B7 客观联锁与事件顺序 |
 
 ## 3. 字体搭配
 
-UI 使用系统中文无衬线；档案正文使用 `Songti SC, STSong, SimSun, serif`。等宽记录使用 `ui-monospace, Consolas, monospace`。
+UI 使用系统中文无衬线；档案正文使用 `Songti SC, STSong, SimSun, serif`。等宽记录使用 `ui-monospace, Consolas, monospace`。像素感来自 1px 规则线、方角、有限功能色与小尺寸有序网格，不能降低长中文档案的字号或字形可读性。
 
 ## 4. 效果系统
 
-圆角 6px / 12px；仅使用低对比边框与 160ms opacity/transform 过渡。支持 `prefers-reduced-motion`。
+方角面板、1px 规则线、4px 像素投影与局部角标；仅使用 150ms 背景／边框／transform 过渡。B4 只添加一条海绿色状态线，B7 只使用稀疏朱砂节点。支持 `prefers-reduced-motion`。
 
 ## 5. 反模式警告
 
 - 不用闪烁、抖动或噪音效果传达关键证据。
 - 不用颜色单独区分“肉体”“确认事实”和“玩家假设”。
+- 不把像素风当作复古滤镜；边框、状态线和缩略图必须按网格单独设计。
+- 不用泛黄旧纸、铜牌、蒸汽朋克齿轮或大面积装饰压过档案正文。
 
 ## 6. 预交付清单
 

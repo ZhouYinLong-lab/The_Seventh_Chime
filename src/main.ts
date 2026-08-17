@@ -138,10 +138,19 @@ function utilities() {
   return `<div class="utilities"><button class="quiet" data-action="export">导出进度</button><label class="file-label">导入进度<input id="import-file" type="file" accept="application/json" /></label><button class="quiet danger" data-action="reset">重置</button></div>`;
 }
 
+function bellRail() {
+  return `<nav class="bell-rail" aria-label="钟次导航">${content.bells.map((bell) => {
+    const active = bell.id === state.query.bell;
+    const revealed = isRevealed() && bell.id === 'b4';
+    const reconstructed = bell.id === 'b7' && state.discovered.some((id) => documents.get(id)?.bell === 'b7');
+    return `<button class="bell-chip ${active ? 'active' : ''} ${revealed ? 'revealed' : ''} ${reconstructed ? 'reconstructed' : ''}" data-action="select-bell" data-bell="${bell.id}" aria-pressed="${active}"><strong>${esc(bell.id.toUpperCase())}</strong><span>${esc(bell.label)}</span></button>`;
+  }).join('')}</nav>`;
+}
+
 function render() {
   const active = state.activeDoc ? documents.get(state.activeDoc) : undefined;
   const nav = [['query', '查询'], ['archive', '档案'], ['facts', '地点'], ['notes', '笔记'], ...(isRevealed() ? [['hypotheses', '假设']] : [])];
-  app.innerHTML = `<header><div><p class="eyebrow">THE SEVENTH CHIME</p><p class="save-state">已解锁 ${state.discovered.length} 份 · 本地保存</p></div>${utilities()}</header><nav class="mobile-nav" aria-label="工作台分区">${nav.map(([id, label]) => `<button data-action="tab" data-tab="${id}" class="${state.tab === id ? 'active' : ''}">${label}</button>`).join('')}</nav><main class="workspace"><aside class="left ${state.tab === 'query' ? 'mobile-visible' : ''}">${leftPanel()}${archive()}</aside><section class="center ${state.tab === 'archive' ? 'mobile-visible' : ''}">${reader(active)}</section><aside class="right ${['facts', 'notes', 'hypotheses'].includes(state.tab) ? 'mobile-visible' : ''}">${locationGrid()}${notePanel()}${hypothesisPanel()}</aside></main>`;
+  app.innerHTML = `<header><div><p class="eyebrow">THE SEVENTH CHIME</p><p class="save-state">已解锁 ${state.discovered.length} 份 · 本地保存</p></div>${utilities()}</header>${bellRail()}<nav class="mobile-nav" aria-label="工作台分区">${nav.map(([id, label]) => `<button data-action="tab" data-tab="${id}" class="${state.tab === id ? 'active' : ''}">${label}</button>`).join('')}</nav><main class="workspace"><aside class="left ${state.tab === 'query' ? 'mobile-visible' : ''}">${leftPanel()}${archive()}</aside><section class="center ${state.tab === 'archive' ? 'mobile-visible' : ''}">${reader(active)}</section><aside class="right ${['facts', 'notes', 'hypotheses'].includes(state.tab) ? 'mobile-visible' : ''}">${locationGrid()}${notePanel()}${hypothesisPanel()}</aside></main>`;
 }
 
 function exportSave() {
@@ -190,6 +199,7 @@ app.addEventListener('click', (event) => {
   if (action === 'submit-ring') { const submitted = [0, 1, 2, 3].map((index) => document.querySelector<HTMLSelectElement>(`#ring-${index}`)?.value); feedback = submitted.join('|') === content.sliceRing.join('|') ? '该片段与校样所示轮转方向一致。完整圆环仍由你自己整理。' : '这段排列与已读校样或早期记录冲突。检查方向和重复姓名。'; render(); return; }
   if (action === 'export') { exportSave(); return; }
   if (action === 'reset') { if (confirm('重置本机的《黑潮钟》进度？建议先导出。')) { state = emptySave(); localStorage.removeItem(storageKey); localStorage.removeItem(backupKey); feedback = '进度已重置。'; render(); } return; }
+  if (action === 'select-bell') { state.query.bell = button.dataset.bell || state.query.bell; state.tab = 'query'; feedback = `已切换至 ${bellName(state.query.bell)}。选择地点与在场肉体后检索记录。`; render(); return; }
   if (action === 'tab') { state.tab = button.dataset.tab || 'query'; render(); return; }
 });
 
