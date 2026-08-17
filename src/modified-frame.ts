@@ -1,5 +1,5 @@
 import { deriveOccupancy, normaliseRotation } from './ring';
-import type { BodyId, DerivedOccupancyB5B7, ModifiedFrameDraft, SaveV3 } from './types';
+import type { BodyId, DerivedOccupancyB5B7, ModifiedFrameDraft, SaveV2 } from './types';
 
 export const MODIFIED_FRAME_ANSWER = {
   changedAfterBell: 'b4' as const,
@@ -18,7 +18,7 @@ export const validateModifiedFrame = (draft: ModifiedFrameDraft) => {
   if (draft.evidenceRefs.length < 3 || new Set(draft.evidenceRefs.map((ref) => ref.docId)).size < 2) failures.push('evidence');
   return { correct: failures.length === 0, failures };
 };
-export const liveFrameAvailable = (save: SaveV3) => Boolean(save.stageSubmissions.originalRing?.correct && save.read.includes('doc_b6_a_niko'));
+export const liveFrameAvailable = (save: SaveV2) => Boolean(save.stageSubmissions.originalRing?.correct && save.read.includes('doc_b6_a_niko'));
 export const deriveModifiedOccupancy = (originalRing: BodyId[], draft: ModifiedFrameDraft): DerivedOccupancyB5B7 => {
   let previous = deriveOccupancy(originalRing, ['b4']).b4;
   const derived = {} as DerivedOccupancyB5B7;

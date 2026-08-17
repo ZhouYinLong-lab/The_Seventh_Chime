@@ -1,6 +1,6 @@
 import { isSameOrientation } from './ring';
 import { deriveModifiedOccupancy, emptyModifiedFrameDraft, validateModifiedFrame } from './modified-frame';
-import type { ArchiveDocument, ArchiveFilters, BellId, BodyId, Character, DerivedOccupancyB5B7, EvidenceReference, HintState, HypothesisCell, HypothesisGrid, ModifiedFrameDraft, ModifiedFrameSubmission, Note, PlaytestEvent, SaveV2, SaveV3 } from './types';
+import type { ArchiveDocument, ArchiveFilters, BellId, BodyId, Character, DerivedOccupancyB5B7, EvidenceReference, HintState, HypothesisCell, HypothesisGrid, ModifiedFrameDraft, ModifiedFrameSubmission, Note, PlaytestEvent, SaveV2, SaveV3, SaveV4, TerminalEntry } from './types';
 
 export const storageKey = 'btb.save.v1.current';
 export const backupKey = 'btb.save.v1.backup';
@@ -12,7 +12,7 @@ export const defaultFilters = (): ArchiveFilters => ({ bell: 'all', location: 'a
 const now = () => new Date().toISOString();
 export const defaultHintState = (): HintState => ({ nodeKey: 'b0-start', invalidQueries: 0, shownLevel: 0, interactionSinceHint: false, lastProgressAt: now() });
 const emptySaveV2 = (characters: Character[]): SaveV2 => ({ version: 2, discovered: [], read: [], annotations: {}, notes: [], hypotheses: createHypothesisGrid(characters.map((character) => character.id)), queryHistory: [], pinnedDocIds: [], compareDocIds: [], archiveFilters: defaultFilters(), stageSubmissions: {}, draftOriginalRing: [], hintState: defaultHintState(), playtestEvents: [], activeDoc: null, activeSegmentId: null, query: { bell: 'b0', location: 'h_admin', bodies: ['mara', 'kovac', 'verri'] }, attempts: 0, tab: 'query', updatedAt: now() });
-export const emptySave = (characters: Character[]): SaveV3 => ({ ...emptySaveV2(characters), version: 3, modifiedFrameDraft: emptyModifiedFrameDraft(), derivedOccupancyB5B7: null });
+export const emptySave = (characters: Character[]): SaveV4 => ({ ...emptySaveV2(characters), version: 4, modifiedFrameDraft: emptyModifiedFrameDraft(), derivedOccupancyB5B7: null, terminalLog: [] });
 
 const array = (value: unknown): string[] => Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 const records = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -54,7 +54,7 @@ const parseV2 = (source: Record<string, unknown>, context: SaveContext): SaveV2 
   const gridSource = records(source.hypotheses); const grid = createHypothesisGrid(context.characters.map((character) => character.id));
   for (const bell of hypothesisBells) { const sourceBell = records(gridSource[bell]); if (!Object.keys(sourceBell).length) return null; for (const body of ids) { const cell = records(sourceBell[body]); if (typeof cell.primaryCandidate !== 'string' && cell.primaryCandidate !== null || (typeof cell.primaryCandidate === 'string' && !ids.has(cell.primaryCandidate)) || typeof cell.uncertain !== 'boolean' || !Array.isArray(cell.evidenceRefs)) return null; const refs = cell.evidenceRefs.map((ref) => evidenceRef(ref, documentById)); if (refs.some((ref) => !ref)) return null; grid[bell][body] = { primaryCandidate: cell.primaryCandidate, uncertain: cell.uncertain, evidenceRefs: refs as EvidenceReference[] }; } }
   const history = Array.isArray(source.queryHistory) ? source.queryHistory.map((value) => records(value)) : null; if (!history) return null; const queryHistory = history.map((entry) => typeof entry.key === 'string' && validDate(entry.at) && ['found', 'locked', 'invalid'].includes(entry.result as string) && (entry.docId === undefined || typeof entry.docId === 'string' && documentIds.has(entry.docId)) ? { key: entry.key, at: entry.at as string, result: entry.result as SaveV2['queryHistory'][number]['result'], ...(typeof entry.docId === 'string' ? { docId: entry.docId } : {}) } : null); if (queryHistory.some((entry) => !entry)) return null;
-  const eventKinds = new Set<PlaytestEvent['kind']>(['query', 'invalid_query', 'unlock', 'revisit', 'compare', 'hint', 'b4_reveal', 'hypothesis_edit', 'ring_submit', 'modified_frame_reveal', 'modified_frame_edit', 'modified_frame_submit']); if (!Array.isArray(source.playtestEvents)) return null; const events = source.playtestEvents.map((value) => { const event = records(value); return eventKinds.has(event.kind as PlaytestEvent['kind']) && validDate(event.at) ? { kind: event.kind as PlaytestEvent['kind'], at: event.at as string, ...(records(event.detail) ? { detail: Object.fromEntries(Object.entries(records(event.detail)).filter(([, detail]) => ['string', 'number', 'boolean'].includes(typeof detail))) } : {}) } : null; }); if (events.some((event) => !event)) return null;
+  const eventKinds = new Set<PlaytestEvent['kind']>(['query', 'invalid_query', 'unlock', 'revisit', 'compare', 'hint', 'b4_reveal', 'hypothesis_edit', 'ring_submit', 'modified_frame_reveal', 'modified_frame_edit', 'modified_frame_submit', 'terminal_command']); if (!Array.isArray(source.playtestEvents)) return null; const events = source.playtestEvents.map((value) => { const event = records(value); return eventKinds.has(event.kind as PlaytestEvent['kind']) && validDate(event.at) ? { kind: event.kind as PlaytestEvent['kind'], at: event.at as string, ...(records(event.detail) ? { detail: Object.fromEntries(Object.entries(records(event.detail)).filter(([, detail]) => ['string', 'number', 'boolean'].includes(typeof detail))) } : {}) } : null; }); if (events.some((event) => !event)) return null;
   if (typeof source.attempts !== 'number' || source.attempts < 0 || !Number.isInteger(source.attempts) || !['query', 'archive', 'facts', 'notes', 'hypotheses'].includes(source.tab as string)) return null;
   return { ...fresh, version: 2, discovered, read, annotations, notes: savedNotes, hypotheses: grid, queryHistory: queryHistory as SaveV2['queryHistory'], pinnedDocIds: pinned, compareDocIds: compare, archiveFilters, stageSubmissions: stage, draftOriginalRing: draft, hintState, playtestEvents: events as PlaytestEvent[], activeDoc, activeSegmentId: activeSegment, query: { bell: query.bell as BellId, location: query.location, bodies: queryBodies }, attempts: source.attempts, tab: source.tab as SaveV2['tab'], updatedAt: source.updatedAt };
 };
@@ -67,6 +67,19 @@ const migrateV1 = (source: Record<string, unknown>, context: SaveContext): SaveV
   return result;
 };
 const upgradeV2 = (save: SaveV2): SaveV3 => ({ ...save, version: 3, modifiedFrameDraft: emptyModifiedFrameDraft(), derivedOccupancyB5B7: null });
+const upgradeV3 = (save: SaveV3): SaveV4 => ({ ...save, version: 4, terminalLog: [] });
+const parseTerminalLog = (value: unknown): TerminalEntry[] | null => {
+  if (!Array.isArray(value)) return null;
+  const output: TerminalEntry[] = [];
+  for (const entry of value) { const item = records(entry); if (typeof item.input !== 'string' || !item.input.trim() || !Array.isArray(item.output) || item.output.some((line) => typeof line !== 'string') || !validDate(item.at)) return null; output.push({ input: item.input, output: item.output as string[], at: item.at }); if (output.length === 60) break; }
+  return output;
+};
+const parseV4 = (source: Record<string, unknown>, context: SaveContext): SaveV4 | null => {
+  if (source.version !== 4) return null;
+  const base = parseV3({ ...source, version: 3 }, context); if (!base) return null;
+  const terminalLog = parseTerminalLog(source.terminalLog); if (!terminalLog) return null;
+  return { ...base, version: 4, terminalLog };
+};
 const parseModifiedDraft = (value: unknown, ids: Set<string>, documentById: Map<string, ArchiveDocument>, discovered: string[]): ModifiedFrameDraft | null => {
   const source = records(value); if (!Object.keys(source).length) return null;
   const idOrNull = (candidate: unknown) => candidate === null || typeof candidate === 'string' && ids.has(candidate) ? candidate : undefined;
@@ -90,8 +103,8 @@ const parseV3 = (source: Record<string, unknown>, context: SaveContext): SaveV3 
   else if (derivedRaw !== null) return null;
   return { ...base, version: 3, modifiedFrameDraft, ...(modifiedFrameSubmission ? { modifiedFrameSubmission } : {}), derivedOccupancyB5B7: modifiedFrameSubmission ? derivedRaw as DerivedOccupancyB5B7 : null };
 };
-export const migrateSave = (raw: unknown, characters: Character[], documents: ArchiveDocument[] = []): SaveV3 | null => { const source = records(raw); if (!Object.keys(source).length) return null; const context = contextFor(characters, documents); if (source.version === 3) return parseV3(source, context); if (source.version === 2) { const v2 = parseV2(source, context); return v2 ? upgradeV2(v2) : null; } if (source.version === 1) { const v1 = migrateV1(source, context); return v1 ? upgradeV2(v1) : null; } return null; };
-export const chooseNewestSave = (candidates: unknown[], characters: Character[], documents: ArchiveDocument[]) => candidates.map((candidate) => migrateSave(candidate, characters, documents)).filter((candidate): candidate is SaveV3 => Boolean(candidate)).sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))[0] ?? null;
+export const migrateSave = (raw: unknown, characters: Character[], documents: ArchiveDocument[] = []): SaveV4 | null => { const source = records(raw); if (!Object.keys(source).length) return null; const context = contextFor(characters, documents); if (source.version === 4) return parseV4(source, context); if (source.version === 3) { const v3 = parseV3(source, context); return v3 ? upgradeV3(v3) : null; } if (source.version === 2) { const v2 = parseV2(source, context); return v2 ? upgradeV3(upgradeV2(v2)) : null; } if (source.version === 1) { const v1 = migrateV1(source, context); return v1 ? upgradeV3(upgradeV2(v1)) : null; } return null; };
+export const chooseNewestSave = (candidates: unknown[], characters: Character[], documents: ArchiveDocument[]) => candidates.map((candidate) => migrateSave(candidate, characters, documents)).filter((candidate): candidate is SaveV4 => Boolean(candidate)).sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))[0] ?? null;
 export const loadSave = (characters: Character[], documents: ArchiveDocument[]) => { const candidates: unknown[] = []; for (const key of [storageKey, backupKey]) try { const raw = localStorage.getItem(key); if (raw) candidates.push(JSON.parse(raw)); } catch { /* unreadable storage is handled as an empty session */ } return chooseNewestSave(candidates, characters, documents) ?? emptySave(characters); };
-export const persistSave = (state: SaveV3): boolean => { try { state.updatedAt = now(); const current = localStorage.getItem(storageKey); localStorage.setItem(backupKey, current || ''); localStorage.setItem(storageKey, JSON.stringify(state)); return true; } catch { return false; } };
-export const recordEvent = (state: SaveV3, kind: PlaytestEvent['kind'], detail?: PlaytestEvent['detail']) => { state.playtestEvents.push({ kind, at: now(), ...(detail ? { detail } : {}) }); };
+export const persistSave = (state: SaveV4): boolean => { try { state.updatedAt = now(); const current = localStorage.getItem(storageKey); localStorage.setItem(backupKey, current || ''); localStorage.setItem(storageKey, JSON.stringify(state)); return true; } catch { return false; } };
+export const recordEvent = (state: SaveV4, kind: PlaytestEvent['kind'], detail?: PlaytestEvent['detail']) => { state.playtestEvents.push({ kind, at: now(), ...(detail ? { detail } : {}) }); };
