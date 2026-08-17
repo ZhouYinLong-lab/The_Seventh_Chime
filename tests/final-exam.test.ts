@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { b7Events } from '../src/b7-timeline.ts';
 import { content } from '../src/content.ts';
@@ -9,9 +10,11 @@ const canonical = Object.fromEntries(examQuestions.map((question) => [question.i
 const aligned = Object.fromEntries(b7Events.map((event) => [event.id, event.time])) as Record<string, string>;
 
 test('终局答卷九项与作者基线一致', () => {
-  assert.deepEqual(examQuestions.map((question) => question.answer), ['verri', 'niko', 'kovac', 'kovac', 'verri', 'verri', 'niko', 'verri', 'niko']);
+  const baseline = JSON.parse(readFileSync(new URL('../author/baseline.json', import.meta.url), 'utf8')) as { finalAnswers: [string, string][] };
   assert.equal(examQuestions.length, 9);
   assert.equal(new Set(examQuestions.map((question) => question.id)).size, 9);
+  assert.deepEqual(examQuestions.map((question) => question.id), baseline.finalAnswers.map(([, id]) => id));
+  assert.deepEqual(examQuestions.map((question) => question.answer), baseline.finalAnswers.map(([answer]) => answer));
 });
 
 test('答卷判定只接受完整且完全正确的九项', () => {

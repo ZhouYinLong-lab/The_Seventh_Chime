@@ -1,16 +1,529 @@
 {
-  "locations": {"mara":["h","a","a","a","h","r","r","h"],"klara":["r","r","r","r","r","r","r","r"],"livia":["j","j","j","j","j","j","j","j"],"niko":["c","c","c","c","c","a","a","a"],"mateo":["j","j","j","h","a","a","h","a"],"kovac":["h","a","a","h","h","h","h","r"],"verri":["h","h","a","h","h","h","h","r"]},
-  "occupancy": {"b1":{"mara":"verri","klara":"mara","livia":"klara","niko":"livia","mateo":"niko","kovac":"mateo","verri":"kovac"},"b2":{"mara":"kovac","klara":"verri","livia":"mara","niko":"klara","mateo":"livia","kovac":"niko","verri":"mateo"},"b3":{"mara":"mateo","klara":"kovac","livia":"verri","niko":"mara","mateo":"klara","kovac":"livia","verri":"niko"},"b4":{"mara":"niko","klara":"mateo","livia":"kovac","niko":"verri","mateo":"mara","kovac":"klara","verri":"livia"},"b5":{"mara":"klara","klara":"niko","livia":"mateo","niko":"verri","mateo":"livia","kovac":"mara","verri":"kovac"},"b6":{"mara":"mara","klara":"klara","livia":"niko","niko":"verri","mateo":"kovac","kovac":"livia","verri":"mateo"},"b7":{"mara":"livia","klara":"mara","livia":"klara","niko":"verri","mateo":"mateo","kovac":"kovac","verri":"niko"}},
+  "locations": {
+    "mara": [
+      "h",
+      "a",
+      "a",
+      "a",
+      "h",
+      "r",
+      "r",
+      "h"
+    ],
+    "klara": [
+      "r",
+      "r",
+      "r",
+      "r",
+      "r",
+      "r",
+      "r",
+      "r"
+    ],
+    "livia": [
+      "j",
+      "j",
+      "j",
+      "j",
+      "j",
+      "j",
+      "j",
+      "j"
+    ],
+    "niko": [
+      "c",
+      "c",
+      "c",
+      "c",
+      "c",
+      "a",
+      "a",
+      "a"
+    ],
+    "mateo": [
+      "j",
+      "j",
+      "j",
+      "h",
+      "a",
+      "a",
+      "h",
+      "a"
+    ],
+    "kovac": [
+      "h",
+      "a",
+      "a",
+      "h",
+      "h",
+      "h",
+      "h",
+      "r"
+    ],
+    "verri": [
+      "h",
+      "h",
+      "a",
+      "h",
+      "h",
+      "h",
+      "h",
+      "r"
+    ]
+  },
+  "occupancy": {
+    "b1": {
+      "mara": "verri",
+      "klara": "mara",
+      "livia": "klara",
+      "niko": "livia",
+      "mateo": "niko",
+      "kovac": "mateo",
+      "verri": "kovac"
+    },
+    "b2": {
+      "mara": "kovac",
+      "klara": "verri",
+      "livia": "mara",
+      "niko": "klara",
+      "mateo": "livia",
+      "kovac": "niko",
+      "verri": "mateo"
+    },
+    "b3": {
+      "mara": "mateo",
+      "klara": "kovac",
+      "livia": "verri",
+      "niko": "mara",
+      "mateo": "klara",
+      "kovac": "livia",
+      "verri": "niko"
+    },
+    "b4": {
+      "mara": "niko",
+      "klara": "mateo",
+      "livia": "kovac",
+      "niko": "verri",
+      "mateo": "mara",
+      "kovac": "klara",
+      "verri": "livia"
+    },
+    "b5": {
+      "mara": "klara",
+      "klara": "niko",
+      "livia": "mateo",
+      "niko": "verri",
+      "mateo": "livia",
+      "kovac": "mara",
+      "verri": "kovac"
+    },
+    "b6": {
+      "mara": "mara",
+      "klara": "klara",
+      "livia": "niko",
+      "niko": "verri",
+      "mateo": "kovac",
+      "kovac": "livia",
+      "verri": "mateo"
+    },
+    "b7": {
+      "mara": "livia",
+      "klara": "mara",
+      "livia": "klara",
+      "niko": "verri",
+      "mateo": "mateo",
+      "kovac": "kovac",
+      "verri": "niko"
+    }
+  },
   "scenes": [
-    ["BT-SC-B0-H01","b0","h",["mara","kovac","verri"]],["BT-SC-B0-R01","b0","r",["klara"]],["BT-SC-B0-J01","b0","j",["livia","mateo"]],["BT-SC-B0-C01","b0","c",["niko"]],
-    ["BT-SC-B1-A01","b1","a",["mara","kovac"]],["BT-SC-B1-R01","b1","r",["klara"]],["BT-SC-B1-J01","b1","j",["livia","mateo"]],["BT-SC-B1-C01","b1","c",["niko"]],["BT-SC-B1-H01","b1","h",["verri"]],
-    ["BT-SC-B2-A01","b2","a",["mara","kovac","verri"]],["BT-SC-B2-R01","b2","r",["klara"]],["BT-SC-B2-J01","b2","j",["livia","mateo"]],["BT-SC-B2-C01","b2","c",["niko"]],
-    ["BT-SC-B3-A01","b3","a",["mara"]],["BT-SC-B3-R01","b3","r",["klara"]],["BT-SC-B3-J01","b3","j",["livia"]],["BT-SC-B3-C01","b3","c",["niko"]],["BT-SC-B3-H01","b3","h",["mateo","kovac","verri"]],
-    ["BT-SC-B4-A01","b4","a",["mateo"]],["BT-SC-B4-C01","b4","c",["niko"]],["BT-SC-B4-H01","b4","h",["mara","kovac","verri"]],["BT-SC-B4-R01","b4","r",["klara"]],["BT-SC-B4-J01","b4","j",["livia"]],
-    ["BT-SC-B5-H01","b5","h",["kovac","verri"]],["BT-SC-B5-R01","b5","r",["mara","klara"]],["BT-SC-B5-A01","b5","a",["niko","mateo"]],["BT-SC-B5-J01","b5","j",["livia"]],
-    ["BT-SC-B6-R01","b6","r",["mara","klara"]],["BT-SC-B6-H01","b6","h",["mateo","kovac","verri"]],["BT-SC-B6-J01","b6","j",["livia"]],["BT-SC-B6-A01","b6","a",["niko"]],
-    ["BT-SC-B7-R01","b7","r",["klara","kovac","verri"]],["BT-SC-B7-A01","b7","a",["niko","mateo"]],["BT-SC-B7-J01","b7","j",["livia"]],["BT-SC-B7-H01","b7","h",["mara"]]
+    [
+      "BT-SC-B0-H01",
+      "b0",
+      "h",
+      [
+        "mara",
+        "kovac",
+        "verri"
+      ]
+    ],
+    [
+      "BT-SC-B0-R01",
+      "b0",
+      "r",
+      [
+        "klara"
+      ]
+    ],
+    [
+      "BT-SC-B0-J01",
+      "b0",
+      "j",
+      [
+        "livia",
+        "mateo"
+      ]
+    ],
+    [
+      "BT-SC-B0-C01",
+      "b0",
+      "c",
+      [
+        "niko"
+      ]
+    ],
+    [
+      "BT-SC-B1-A01",
+      "b1",
+      "a",
+      [
+        "mara",
+        "kovac"
+      ]
+    ],
+    [
+      "BT-SC-B1-R01",
+      "b1",
+      "r",
+      [
+        "klara"
+      ]
+    ],
+    [
+      "BT-SC-B1-J01",
+      "b1",
+      "j",
+      [
+        "livia",
+        "mateo"
+      ]
+    ],
+    [
+      "BT-SC-B1-C01",
+      "b1",
+      "c",
+      [
+        "niko"
+      ]
+    ],
+    [
+      "BT-SC-B1-H01",
+      "b1",
+      "h",
+      [
+        "verri"
+      ]
+    ],
+    [
+      "BT-SC-B2-A01",
+      "b2",
+      "a",
+      [
+        "mara",
+        "kovac",
+        "verri"
+      ]
+    ],
+    [
+      "BT-SC-B2-R01",
+      "b2",
+      "r",
+      [
+        "klara"
+      ]
+    ],
+    [
+      "BT-SC-B2-J01",
+      "b2",
+      "j",
+      [
+        "livia",
+        "mateo"
+      ]
+    ],
+    [
+      "BT-SC-B2-C01",
+      "b2",
+      "c",
+      [
+        "niko"
+      ]
+    ],
+    [
+      "BT-SC-B3-A01",
+      "b3",
+      "a",
+      [
+        "mara"
+      ]
+    ],
+    [
+      "BT-SC-B3-R01",
+      "b3",
+      "r",
+      [
+        "klara"
+      ]
+    ],
+    [
+      "BT-SC-B3-J01",
+      "b3",
+      "j",
+      [
+        "livia"
+      ]
+    ],
+    [
+      "BT-SC-B3-C01",
+      "b3",
+      "c",
+      [
+        "niko"
+      ]
+    ],
+    [
+      "BT-SC-B3-H01",
+      "b3",
+      "h",
+      [
+        "mateo",
+        "kovac",
+        "verri"
+      ]
+    ],
+    [
+      "BT-SC-B4-A01",
+      "b4",
+      "a",
+      [
+        "mateo"
+      ]
+    ],
+    [
+      "BT-SC-B4-C01",
+      "b4",
+      "c",
+      [
+        "niko"
+      ]
+    ],
+    [
+      "BT-SC-B4-H01",
+      "b4",
+      "h",
+      [
+        "mara",
+        "kovac",
+        "verri"
+      ]
+    ],
+    [
+      "BT-SC-B4-R01",
+      "b4",
+      "r",
+      [
+        "klara"
+      ]
+    ],
+    [
+      "BT-SC-B4-J01",
+      "b4",
+      "j",
+      [
+        "livia"
+      ]
+    ],
+    [
+      "BT-SC-B5-H01",
+      "b5",
+      "h",
+      [
+        "kovac",
+        "verri"
+      ]
+    ],
+    [
+      "BT-SC-B5-R01",
+      "b5",
+      "r",
+      [
+        "mara",
+        "klara"
+      ]
+    ],
+    [
+      "BT-SC-B5-A01",
+      "b5",
+      "a",
+      [
+        "niko",
+        "mateo"
+      ]
+    ],
+    [
+      "BT-SC-B5-J01",
+      "b5",
+      "j",
+      [
+        "livia"
+      ]
+    ],
+    [
+      "BT-SC-B6-R01",
+      "b6",
+      "r",
+      [
+        "mara",
+        "klara"
+      ]
+    ],
+    [
+      "BT-SC-B6-H01",
+      "b6",
+      "h",
+      [
+        "mateo",
+        "kovac",
+        "verri"
+      ]
+    ],
+    [
+      "BT-SC-B6-J01",
+      "b6",
+      "j",
+      [
+        "livia"
+      ]
+    ],
+    [
+      "BT-SC-B6-A01",
+      "b6",
+      "a",
+      [
+        "niko"
+      ]
+    ],
+    [
+      "BT-SC-B7-R01",
+      "b7",
+      "r",
+      [
+        "klara",
+        "kovac",
+        "verri"
+      ]
+    ],
+    [
+      "BT-SC-B7-A01",
+      "b7",
+      "a",
+      [
+        "niko",
+        "mateo"
+      ]
+    ],
+    [
+      "BT-SC-B7-J01",
+      "b7",
+      "j",
+      [
+        "livia"
+      ]
+    ],
+    [
+      "BT-SC-B7-H01",
+      "b7",
+      "h",
+      [
+        "mara"
+      ]
+    ]
   ],
-  "items": {"pistol":["b0:kovac:h:intact","b7:kovac:r:broken_fired"],"list":["b2:verri:a:coat","b7:verri:r:transfer_slot"],"slug":["b0:c:frame","b4:niko:c:carried","b7:niko:a:carried"],"tape":["b6:klara:r:prepared","b7:klara:r:triggered"]},
-  "b7Timeline": [["23:00:00","jump"],["23:00:08","tape_start_and_interlock"],["23:00:26","list_to_signal_room"],["23:00:38","identity_check_blocked"],["23:00:39","holster_seal_broken"],["23:00:43","shot"],["23:01:12","tape_complete"]]
+  "items": {
+    "pistol": [
+      "b0:kovac:h:intact",
+      "b7:kovac:r:broken_fired"
+    ],
+    "list": [
+      "b2:verri:a:coat",
+      "b7:verri:r:transfer_slot"
+    ],
+    "slug": [
+      "b0:c:frame",
+      "b4:niko:c:carried",
+      "b7:niko:a:carried"
+    ],
+    "tape": [
+      "b6:klara:r:prepared",
+      "b7:klara:r:triggered"
+    ]
+  },
+  "b7Timeline": [
+    [
+      "23:00:00",
+      "jump"
+    ],
+    [
+      "23:00:08",
+      "tape_start_and_interlock"
+    ],
+    [
+      "23:00:26",
+      "list_to_signal_room"
+    ],
+    [
+      "23:00:38",
+      "identity_check_blocked"
+    ],
+    [
+      "23:00:39",
+      "holster_seal_broken"
+    ],
+    [
+      "23:00:43",
+      "shot"
+    ],
+    [
+      "23:01:12",
+      "tape_complete"
+    ]
+  ],
+  "finalAnswers": [
+    [
+      "verri",
+      "corpse_body"
+    ],
+    [
+      "niko",
+      "dead_soul"
+    ],
+    [
+      "kovac",
+      "shooter_soul"
+    ],
+    [
+      "kovac",
+      "shooter_body"
+    ],
+    [
+      "verri",
+      "believed_target_soul"
+    ],
+    [
+      "verri",
+      "escaped_soul"
+    ],
+    [
+      "niko",
+      "escaped_body"
+    ],
+    [
+      "verri",
+      "frame_modifier"
+    ],
+    [
+      "niko",
+      "anchored_body"
+    ]
+  ]
 }

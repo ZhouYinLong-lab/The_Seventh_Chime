@@ -131,6 +131,54 @@ test('INSPECT 命中物品档案且不泄露正式推演术语', async ({ page }
   for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改']) await expect(page.locator('body')).not.toContainText(forbidden);
 });
 
+test('指令台完整走通 B0–B4 并开放推演面板', async ({ page }) => {
+  await page.goto('/');
+  const chain: [string, string][] = [
+    ['OPEN B0-H-MARA-KOVAC-VERRI', '封站命令'],
+    ['OPEN B0-R-KLARA', '线路自检'],
+    ['OPEN B0-J-LIVIA-MATEO', '拘押体检'],
+    ['OPEN B0-C-NIKO', '七钟校准'],
+    ['OPEN B1-A-MARA-KOVAC', '私柜与暗记'],
+    ['OPEN B1-R-KLARA', '不会发报的报务员'],
+    ['OPEN B1-J-LIVIA-MATEO', '敲击与遗物'],
+    ['OPEN B1-C-NIKO', '少年的专业包扎'],
+    ['OPEN B2-A-MARA-KOVAC-VERRI', '名册三人场'],
+    ['OPEN B2-R-KLARA', '被改短的线路'],
+    ['OPEN B2-J-LIVIA-MATEO', '医生与译员互换'],
+    ['OPEN B3-A-MARA', '给第四双手的留言'],
+    ['OPEN B4-A-MATEO', '原始校样'],
+  ];
+  for (const [command, title] of chain) {
+    await run(page, command);
+    await expect(page.locator('#reader h2')).toHaveText(title);
+  }
+  await run(page, 'FILES');
+  await expect(page.locator('.terminal-log')).toContainText('B4-A-MATEO · 原始校样');
+  await expect(page.locator('.hypothesis-grid')).toBeVisible();
+  await expect(page.locator('.ring-workbench')).toBeVisible();
+});
+
+test('导出进度后在新会话导入，发现与推演状态完整迁移', async ({ page }) => {
+  await page.goto('/');
+  await run(page, 'OPEN B0-R-KLARA');
+  await run(page, 'OPEN B0-C-NIKO');
+  await page.locator('#note-text').fill('B0 线路自检纸带完整传递长句。');
+  await page.getByRole('button', { name: '保存笔记' }).click();
+  await expect(page.getByText('B0 线路自检纸带完整传递长句。')).toBeVisible();
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: '导出进度' }).click();
+  const savePath = await (await downloadPromise).path();
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await expect(page.locator('.reader.empty')).toBeVisible();
+  await page.locator('#import-file').setInputFiles(savePath as string);
+  await expect(page.locator('.terminal-log')).toContainText('B0-R-KLARA');
+  await expect(page.locator('body')).toContainText('已解锁 2 份');
+  await expect(page.getByText('B0 线路自检纸带完整传递长句。')).toBeVisible();
+  await run(page, 'FILES');
+  await expect(page.locator('.terminal-log')).toContainText('B0-C-NIKO · 七钟校准');
+});
+
 test('CLEAR 清空指令日志', async ({ page }) => {
   await page.goto('/');
   await run(page, 'HELP');

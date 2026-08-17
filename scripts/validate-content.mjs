@@ -71,4 +71,11 @@ for (const entry of worldEntries) {
 }
 const expectedTimeline = ['jump','tape_start_and_interlock','list_to_signal_room','identity_check_blocked','holster_seal_broken','shot','tape_complete'];
 if (author.b7Timeline.map(([, event]) => event).join('|') !== expectedTimeline.join('|')) fail('B7 秒级顺序被改变。');
-console.log(`内容校验通过：${sceneIds.length} 个场景、${publicData.documents.length} 份玩家档案、${items.length} 件物品、${worldEntries.length} 条背景、B7 顺序固定。`);
+const expectedAnswers = ['corpse_body','dead_soul','shooter_soul','shooter_body','believed_target_soul','escaped_soul','escaped_body','frame_modifier','anchored_body'];
+if (!Array.isArray(author.finalAnswers) || author.finalAnswers.length !== 9) fail('终局答卷必须恰有九项。');
+const answerQuestionIds = author.finalAnswers.map(([, id]) => id);
+if (answerQuestionIds.join('|') !== expectedAnswers.join('|')) fail('终局答卷的问题键被改变。');
+const counts = { verri: 0, niko: 0, kovac: 0 };
+for (const [answer] of author.finalAnswers) { if (!(answer in counts)) fail(`终局答卷答案 ${answer} 不是有效肉体。`); counts[answer] += 1; }
+if (counts.verri !== 4 || counts.niko !== 3 || counts.kovac !== 2) fail('终局答卷的答案分布与基线不符。');
+console.log(`内容校验通过：${sceneIds.length} 个场景、${publicData.documents.length} 份玩家档案、${items.length} 件物品、${worldEntries.length} 条背景、B7 顺序固定、终局答卷九项固定。`);
