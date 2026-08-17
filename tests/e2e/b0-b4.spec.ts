@@ -31,6 +31,63 @@ const submitRing = async (page: Page) => {
   await expect(page.getByText('由已提交规则推导')).toBeVisible();
 };
 
+const showInference = async (page: Page) => {
+  const inference = page.locator('.mobile-nav').getByRole('button', { name: '推演' });
+  if (await inference.isVisible()) await inference.click();
+};
+
+const showQuery = async (page: Page) => {
+  const queryTab = page.locator('.mobile-nav').getByRole('button', { name: '查询' });
+  if (await queryTab.isVisible()) await queryTab.click();
+};
+
+const showArchive = async (page: Page) => {
+  const archiveTab = page.locator('.mobile-nav').getByRole('button', { name: '档案' });
+  if (await archiveTab.isVisible()) await archiveTab.click();
+};
+
+const addLiveEvidence = async (page: Page, index = 0) => {
+  await showArchive(page);
+  await page.locator('#reader').getByRole('button', { name: '选中本段' }).nth(index).click();
+  await showInference(page);
+  await page.getByRole('button', { name: '引用当前选中段' }).click();
+};
+
+const completeLiveFramePrerequisites = async (page: Page) => {
+  await completeB4(page);
+  await showInference(page);
+  await submitRing(page);
+  await showQuery(page);
+  await query(page, 'b2', 'c_bell', ['niko'], '七格节奏');
+  await query(page, 'b3', 'r_radio', ['klara'], '七点呼叫');
+  await query(page, 'b3', 'h_admin', ['mateo', 'kovac', 'verri'], '私密问题会议');
+  await query(page, 'b4', 'h_admin', ['mara', 'kovac', 'verri'], '重逢后的称呼');
+  await query(page, 'b5', 'a_archive', ['niko', 'mateo'], '维护井来客');
+  await query(page, 'b3', 'c_bell', ['niko'], '镜像姓名');
+  await query(page, 'b6', 'a_archive', ['niko'], '六槽副表');
+  await showInference(page);
+  await expect(page.getByRole('heading', { name: '实时版框' })).toBeVisible();
+};
+
+const submitLiveFrame = async (page: Page) => {
+  await page.locator('select[data-modified-field="changedAfterBell"]').selectOption('b4');
+  await page.locator('select[data-modified-field="modifierSoul"]').selectOption('verri');
+  await page.locator('select[data-modified-field="removedName"]').selectOption('niko');
+  await page.locator('select[data-modified-field="anchorBody"]').selectOption('niko');
+  for (const [index, body] of ['mara', 'klara', 'livia', 'verri', 'mateo', 'kovac'].entries()) await page.locator(`select[data-live-ring-index="${index}"]`).selectOption(body);
+  await showQuery(page);
+  await query(page, 'b4', 'a_archive', ['mateo'], '原始校样');
+  await addLiveEvidence(page, 0);
+  await showQuery(page);
+  await query(page, 'b6', 'a_archive', ['niko'], '六槽副表');
+  await addLiveEvidence(page, 0);
+  await showQuery(page);
+  await query(page, 'b5', 'a_archive', ['niko', 'mateo'], '维护井来客');
+  await addLiveEvidence(page, 0);
+  await page.getByRole('button', { name: '提交实时版框' }).click();
+  await expect(page.getByRole('heading', { name: '由已提交实时版框推导' })).toBeVisible();
+};
+
 test('桌面端新存档通过 B0–B4，提交圆环后刷新仍保留', async ({ page }) => {
   await page.goto('/');
   await completeB4(page);
@@ -51,6 +108,8 @@ test('B4 前不显示正式推演术语', async ({ page }) => {
   await expect(page.locator('body')).not.toContainText('占据');
   await expect(page.locator('body')).not.toContainText('圆环');
   await expect(page.locator('body')).not.toContainText('锚点');
+  await expect(page.locator('body')).not.toContainText('实时版框');
+  await expect(page.locator('body')).not.toContainText('规则修改');
 });
 
 test('段落引用在刷新后仍保留', async ({ page }) => {
@@ -87,4 +146,24 @@ test('移动端维持单栏 B0–B4 推演闭环', async ({ page }) => {
   await page.getByRole('button', { name: '推演' }).click();
   await submitRing(page);
   await expect(page.locator('.workspace')).toHaveCSS('display', 'block');
+});
+
+test('桌面端通过六槽副表提交实时版框，B5–B7 演算刷新后保留', async ({ page }) => {
+  await page.goto('/');
+  await completeLiveFramePrerequisites(page);
+  await submitLiveFrame(page);
+  await expect(page.locator('button.derived-fact[data-bell="b7"]')).toHaveCount(7);
+  await page.reload();
+  await showInference(page);
+  await expect(page.getByRole('heading', { name: '由已提交实时版框推导' })).toBeVisible();
+  await expect(page.locator('.live-derivation tbody tr')).toHaveCount(7);
+});
+
+test('390px 移动端完成实时版框闭环且页面不横向溢出', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await completeLiveFramePrerequisites(page);
+  await submitLiveFrame(page);
+  await expect(page.getByRole('heading', { name: '由已提交实时版框推导' })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
