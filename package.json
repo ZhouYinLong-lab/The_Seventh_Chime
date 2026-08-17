@@ -1,0 +1,18 @@
+{
+  "name": "seventh-chime",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "validate:content": "node scripts/validate-content.mjs",
+    "test": "node --test tests/content.test.mjs",
+    "build": "npm run validate:content && npm run typecheck && npm run test && vite build && node scripts/verify-dist.mjs",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7"
+  }
+}
