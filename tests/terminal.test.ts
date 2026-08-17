@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { content, documents } from '../src/content.ts';
-import { findItem, normaliseItem } from '../src/items.ts';
+import { findItem, items, normaliseItem } from '../src/items.ts';
 import { emptySave, migrateSave } from '../src/save.ts';
 import { canonicalKey, completionFor, normaliseKey, parseSceneKey, terminalHelp } from '../src/terminal.ts';
 
@@ -77,8 +77,25 @@ test('HELP 指令文本在 B4 前不含正式推演术语', () => {
   for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改']) assert.ok(!terminalHelp().join(' ').includes(forbidden), `HELP 含有 ${forbidden}`);
 });
 
+test('INSPECT 命中已登记物品与别名', () => {
+  assert.equal(findItem('K-17')?.id, 'IT-GUN-K17');
+  assert.equal(findItem('k17')?.id, 'IT-GUN-K17');
+  assert.equal(findItem('配枪')?.id, 'IT-GUN-K17');
+  assert.equal(findItem('Kovač 值勤钥匙串')?.id, 'IT-KEY-K');
+  assert.equal(findItem('R-2')?.id, 'IT-KEY-R2');
+  assert.equal(findItem('名单')?.id, 'IT-LIST-01');
+  assert.equal(normaliseItem('K-17 手枪'), 'K17手枪');
+  assert.equal(normaliseItem('配枪'), '配枪');
+});
+
 test('INSPECT 对未知物品不泄露存在性', () => {
-  assert.equal(findItem('K-17'), null);
+  assert.equal(findItem('反潜鱼雷'), null);
   assert.equal(findItem('不存在的东西'), null);
-  assert.equal(normaliseItem('K-17 手枪'), 'K17');
+});
+
+test('物品档案在揭示前不含正式推演术语', () => {
+  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改']) {
+    for (const item of items) assert.ok(!`${item.name}${item.description}${item.aliases.join('')}`.includes(forbidden), `${item.id} 含有 ${forbidden}`);
+  }
+  assert.ok(items.length >= 13, '物品登记簿过小');
 });

@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 
 const publicData = JSON.parse(await readFile(new URL('../src/data/public-content.json', import.meta.url), 'utf8'));
 const extendedDocuments = JSON.parse(await readFile(new URL('../src/data/extended-documents.json', import.meta.url), 'utf8'));
+const items = JSON.parse(await readFile(new URL('../src/data/items.json', import.meta.url), 'utf8'));
 publicData.documents = [...publicData.documents, ...extendedDocuments];
 const author = JSON.parse(await readFile(new URL('../author/baseline.json', import.meta.url), 'utf8'));
 const fail = (message) => { throw new Error(`内容校验失败：${message}`); };
@@ -41,6 +42,22 @@ publicData.documents.forEach((doc) => visit(doc.id));
 if (!publicData.documents.some((doc) => doc.initial)) fail('新存档没有初始可查询档案。');
 const itemPaths = Object.values(author.items).flat();
 if (!itemPaths.every((entry) => /^b[0-7]:/.test(entry))) fail('物件路径格式不连续或缺少时段。');
+const forbiddenPreReveal = ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改'];
+const itemIds = new Set(items.map((item) => item.id));
+if (itemIds.size !== items.length) fail('物品 ID 必须唯一。');
+const normalise = (input) => { const folded = input.normalize('NFKC').normalize('NFKD'); let output = ''; for (const char of folded) { const code = char.codePointAt(0); if (code < 0x300 || code > 0x36f) output += char; } return output.toUpperCase().replace(/[^A-Z0-9㐀-鿿]/g, ''); };
+const itemKeys = new Set();
+for (const item of items) {
+  if (!item.name || !item.description) fail(`${item.id} 缺少名称或描述。`);
+  if (!Array.isArray(item.aliases)) fail(`${item.id} 的别名必须是数组。`);
+  for (const key of [item.name, ...item.aliases]) {
+    const folded = normalise(key);
+    if (!folded) fail(`${item.id} 包含空查询键。`);
+    if (itemKeys.has(folded)) fail(`物品查询键冲突：${folded} 被多个物品使用。`);
+    itemKeys.add(folded);
+  }
+  for (const term of forbiddenPreReveal) if (`${item.name}${item.description}${item.aliases.join('')}`.includes(term)) fail(`${item.id} 在揭示前可见文本中使用了「${term}」。`);
+}
 const expectedTimeline = ['jump','tape_start_and_interlock','list_to_signal_room','identity_check_blocked','holster_seal_broken','shot','tape_complete'];
 if (author.b7Timeline.map(([, event]) => event).join('|') !== expectedTimeline.join('|')) fail('B7 秒级顺序被改变。');
-console.log(`内容校验通过：${sceneIds.length} 个场景、${publicData.documents.length} 份玩家档案、B7 顺序固定。`);
+console.log(`内容校验通过：${sceneIds.length} 个场景、${publicData.documents.length} 份玩家档案、${items.length} 件物品、B7 顺序固定。`);

@@ -98,6 +98,16 @@ test('390px 移动端指令台可查询且页面不横向溢出', async ({ page 
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test('INSPECT 命中物品档案且不泄露正式推演术语', async ({ page }) => {
+  await page.goto('/');
+  await run(page, 'INSPECT K-17');
+  await expect(log(page).last()).toContainText('K-17');
+  await expect(log(page).last()).toContainText('封条');
+  await run(page, 'INSPECT 反潜鱼雷');
+  await expect(log(page).last()).toContainText('没有找到该物品的档案记录');
+  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改']) await expect(page.locator('body')).not.toContainText(forbidden);
+});
+
 test('CLEAR 清空指令日志', async ({ page }) => {
   await page.goto('/');
   await run(page, 'HELP');
