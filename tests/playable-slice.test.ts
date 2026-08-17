@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { content } from '../src/content.ts';
 import { documentHasPlayerTag, filteredDocuments } from '../src/archive.ts';
@@ -7,12 +8,13 @@ import { hypothesesPanel } from '../src/hypotheses.ts';
 import { conflictingBodies } from '../src/hypothesis-rules.ts';
 import { findByQuery, isReady, queryKey } from '../src/query.ts';
 import { ORIGINAL_RING, isSameOrientation } from '../src/ring.ts';
+import { MODIFIED_FRAME_ANSWER, deriveModifiedOccupancy, emptyModifiedFrameDraft, isSameSixRingOrientation, validateModifiedFrame } from '../src/modified-frame.ts';
 import { chooseNewestSave, emptySave, migrateSave } from '../src/save.ts';
 
 test('v1 存档迁移保留笔记、标注、阅读位置与旧假设', () => {
   const migrated = migrateSave({ version: 1, discovered: ['doc_b0_r_klara'], read: ['doc_b0_r_klara'], annotations: { doc_b0_r_klara: ['s1:mechanical_fact'] }, notes: [{ id: 'n1', text: '旧笔记', refs: ['doc_b0_r_klara'] }], hypotheses: [{ body: 'klara', soul: 'verri' }], activeDoc: 'doc_b0_r_klara', query: { bell: 'b0', location: 'r_radio', bodies: ['klara'] } }, content.characters, content.documents);
   assert.ok(migrated);
-  assert.equal(migrated?.version, 2);
+  assert.equal(migrated?.version, 3);
   assert.equal(migrated?.notes[0].text, '旧笔记');
   assert.equal(migrated?.notes[0].refs[0].docId, 'doc_b0_r_klara');
   assert.equal(migrated?.annotations.doc_b0_r_klara[0], 's1:mechanical_fact');
@@ -20,15 +22,39 @@ test('v1 存档迁移保留笔记、标注、阅读位置与旧假设', () => {
   assert.equal(migrated?.activeDoc, 'doc_b0_r_klara');
 });
 
-test('v2 对象型段落证据引用在重新加载时保留', () => {
+test('v2 到 v3 迁移保留对象型段落证据引用并建立实时版框状态', () => {
   const save = emptySave(content.characters);
   save.discovered = ['doc_b0_r_klara']; save.read = ['doc_b0_r_klara']; save.activeDoc = 'doc_b0_r_klara'; save.activeSegmentId = 's1';
   save.notes.push({ id: 'n-object', text: '段落引用', refs: [{ docId: 'doc_b0_r_klara', segmentId: 's1' }] });
   save.hypotheses.b1.klara.evidenceRefs.push({ docId: 'doc_b0_r_klara', segmentId: 's1' });
-  const reloaded = migrateSave(JSON.parse(JSON.stringify(save)), content.characters, content.documents);
+  const v2 = JSON.parse(JSON.stringify(save)) as Record<string, unknown>; v2.version = 2; delete v2.modifiedFrameDraft; delete v2.derivedOccupancyB5B7;
+  const reloaded = migrateSave(v2, content.characters, content.documents);
+  assert.equal(reloaded?.version, 3);
   assert.deepEqual(reloaded?.notes[0].refs, [{ docId: 'doc_b0_r_klara', segmentId: 's1' }]);
   assert.deepEqual(reloaded?.hypotheses.b1.klara.evidenceRefs, [{ docId: 'doc_b0_r_klara', segmentId: 's1' }]);
   assert.equal(reloaded?.activeSegmentId, 's1');
+});
+
+const validModifiedDraft = () => ({ ...emptyModifiedFrameDraft(), ...MODIFIED_FRAME_ANSWER, sixBodyRing: [...MODIFIED_FRAME_ANSWER.sixBodyRing], evidenceRefs: [{ docId: 'doc_b4_a_mateo', segmentId: 's1' }, { docId: 'doc_b6_a_niko', segmentId: 's1' }, { docId: 'doc_b6_a_niko', segmentId: 's2' }] });
+
+test('六人环接受旋转、拒绝反向与重复／缺失成员', () => {
+  assert.ok(isSameSixRingOrientation([...MODIFIED_FRAME_ANSWER.sixBodyRing.slice(2), ...MODIFIED_FRAME_ANSWER.sixBodyRing.slice(0, 2)]));
+  assert.ok(!isSameSixRingOrientation([...MODIFIED_FRAME_ANSWER.sixBodyRing].reverse()));
+  assert.ok(!isSameSixRingOrientation(['mara', 'klara', 'livia', 'verri', 'mateo', 'mateo']));
+  assert.ok(!isSameSixRingOrientation(['mara', 'klara', 'livia', 'verri', 'mateo']));
+});
+
+test('实时版框要求证据，且锚定肉体不得进入六槽', () => {
+  const insufficient = validModifiedDraft(); insufficient.evidenceRefs = insufficient.evidenceRefs.slice(0, 2);
+  assert.ok(validateModifiedFrame(insufficient).failures.includes('evidence'));
+  const anchored = validModifiedDraft(); anchored.sixBodyRing = ['mara', 'klara', 'livia', 'verri', 'mateo', 'niko'];
+  assert.ok(validateModifiedFrame(anchored).failures.includes('ring'));
+});
+
+test('B5–B7 推导与作者基线完全一致', async () => {
+  const author = JSON.parse(await readFile(new URL('../author/baseline.json', import.meta.url), 'utf8')) as { occupancy: Record<string, Record<string, string>> };
+  const derived = deriveModifiedOccupancy(ORIGINAL_RING, validModifiedDraft());
+  assert.deepEqual(derived, { b5: author.occupancy.b5, b6: author.occupancy.b6, b7: author.occupancy.b7 });
 });
 
 test('损坏导入会被拒绝，current 与 backup 选择较新的有效存档', () => {
@@ -51,7 +77,7 @@ test('查询键与肉体输入顺序无关', () => {
 
 test('B4 前界面不暴露正式推演术语', () => {
   const markup = hypothesesPanel(emptySave(content.characters), false);
-  for (const forbidden of ['灵魂', '占据', '圆环', '锚点']) assert.ok(!markup.includes(forbidden), `预揭示界面含有 ${forbidden}`);
+  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改']) assert.ok(!markup.includes(forbidden), `预揭示界面含有 ${forbidden}`);
 });
 
 test('原始圆环接受整体旋转，但拒绝反向排列', () => {
