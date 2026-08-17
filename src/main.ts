@@ -154,6 +154,7 @@ app.addEventListener('keydown', (event) => { if ((event.target as HTMLElement)?.
 app.addEventListener('change', (event) => {
   const target = event.target as HTMLInputElement | HTMLSelectElement;
   markInteraction();
+  if (target.id === 'note-text') return;
   if (target.id === 'bell') state.query.bell = target.value as SaveV4['query']['bell'];
   else if (target.id === 'location') state.query.location = target.value;
   else if (target instanceof HTMLInputElement && target.dataset.body) { const body = target.dataset.body; state.query.bodies = target.checked ? [...state.query.bodies, body].slice(0, 3) : state.query.bodies.filter((id) => id !== body); }
