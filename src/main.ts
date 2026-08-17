@@ -1,5 +1,6 @@
 import './styles.css';
 import { validateB7Alignment } from './b7-timeline';
+import { examQuestions, validateExam } from './final-exam';
 import { content, documents, isB4Revealed } from './content';
 import { currentProgressNode, hintAvailable, hintFor, resetHintState } from './hints';
 import { findItem } from './items';
@@ -163,6 +164,7 @@ app.addEventListener('change', (event) => {
   else if (target.dataset.modifiedField) { const field = target.dataset.modifiedField as keyof Pick<typeof state.modifiedFrameDraft, 'changedAfterBell' | 'modifierSoul' | 'removedName' | 'anchorBody'>; state.modifiedFrameDraft[field] = (target.value || null) as never; state.modifiedFrameSubmission = undefined; state.derivedOccupancyB5B7 = null; recordEvent(state, 'modified_frame_edit', { field }); }
   else if (target.dataset.liveRingIndex) { state.modifiedFrameDraft.sixBodyRing[Number(target.dataset.liveRingIndex)] = target.value; state.modifiedFrameSubmission = undefined; state.derivedOccupancyB5B7 = null; recordEvent(state, 'modified_frame_edit', { field: 'sixBodyRing' }); }
   else if (target.dataset.b7Time) { state.b7AlignmentDraft[target.dataset.b7Time] = target.value; }
+  else if (target.dataset.examField) { state.finalExamDraft[target.dataset.examField] = target.value; }
   else if (target instanceof HTMLInputElement && target.id === 'import-file' && target.files?.[0]) { importSave(target.files[0]); return; }
   saveAndRender();
 });
@@ -187,6 +189,7 @@ app.addEventListener('click', (event) => {
   if (action === 'open-modified-evidence') { const ref = button.dataset.evidenceIndex ? state.modifiedFrameDraft.evidenceRefs[Number(button.dataset.evidenceIndex)] : state.modifiedFrameSubmission?.evidenceRefs[0]; if (ref) { state.activeDoc = ref.docId; state.activeSegmentId = ref.segmentId ?? null; state.tab = 'archive'; } return saveAndRender(); }
   if (action === 'submit-modified-frame') { const result = validateModifiedFrame(state.modifiedFrameDraft); recordEvent(state, 'modified_frame_submit', { correct: result.correct, failures: result.failures.join(',') || 'none' }); if (result.correct && state.stageSubmissions.originalRing) { state.modifiedFrameSubmission = { ...state.modifiedFrameDraft, sixBodyRing: [...state.modifiedFrameDraft.sixBodyRing], evidenceRefs: [...state.modifiedFrameDraft.evidenceRefs], correct: true, submittedAt: new Date().toISOString() }; state.derivedOccupancyB5B7 = deriveModifiedOccupancy(state.stageSubmissions.originalRing.ring, state.modifiedFrameSubmission); feedback = '实时版框已提交。下表只按你提交的规则演算，并不判断任何终局责任。'; } else { const labels: Record<string, string> = { timing: '改版时段', roles: '人物／锚定关系', ring: '六槽方向或成员', evidence: '证据数量或来源' }; feedback = `提交尚未通过：请复核${result.failures.map((item) => labels[item]).join('、')}。`; } return saveAndRender(); }
   if (action === 'submit-b7-alignment') { const candidate = { ...state.b7AlignmentDraft }; const complete = Object.values(candidate).every(Boolean); const correct = complete && validateB7Alignment(candidate); recordEvent(state, 'b7_alignment_submit', { complete, correct }); if (correct) { state.b7Alignment = { assigned: candidate, submittedAt: new Date().toISOString(), correct: true }; feedback = '对齐已确认：机器日志、封条与名单位置指向同一顺序。'; } else feedback = complete ? '这组对齐与 B7 记录冲突。回读内信号间档案的秒级对齐表；系统不会指出应替换哪一行。' : '请先把七个事件全部对齐到时刻，再提交。'; return saveAndRender(); }
+  if (action === 'submit-final-exam') { const candidate = { ...state.finalExamDraft }; const complete = examQuestions.every((question) => Boolean(candidate[question.id])); const correct = complete && validateExam(candidate); recordEvent(state, 'final_exam_submit', { complete, correct }); if (correct) { state.finalExam = { answers: candidate, submittedAt: new Date().toISOString(), correct: true }; feedback = '终局答卷已确认：九项结论全部由两条以上相互独立的证据支撑。'; } else feedback = complete ? '这组答卷与证据冲突。每条结论都必须由至少两处独立证据支撑；系统不会指出应替换哪一项。' : '请先回答全部九项，再提交答卷。'; return saveAndRender(); }
   if (action === 'select-bell') { state.query.bell = button.dataset.bell as SaveV4['query']['bell']; state.tab = 'query'; feedback = `已切换至 ${button.dataset.bell?.toUpperCase()}。`; return saveAndRender(); }
   if (action === 'tab') { state.tab = button.dataset.tab as SaveV4['tab']; return saveAndRender(); }
   if (action === 'export') return download(`seventh-chime-save-${new Date().toISOString().slice(0, 10)}.json`, { format: 'seventh-chime-save', save: state });

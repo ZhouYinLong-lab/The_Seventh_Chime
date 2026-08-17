@@ -176,7 +176,11 @@ const alignB7 = async (page: Page, times: Record<string, string>) => {
   for (const [eventId, time] of Object.entries(times)) await page.locator(`select[data-b7-time="${eventId}"]`).selectOption(time);
 };
 
-test('桌面端通过 B7 秒级对齐：错误提交被拒，正确提交刷新后保留', async ({ page }) => {
+const submitFinalExam = async (page: Page, answers: Record<string, string>) => {
+  for (const [questionId, character] of Object.entries(answers)) await page.locator(`select[data-exam-field="${questionId}"]`).selectOption(character);
+};
+
+test('桌面端完成 B7 秒级对齐与终局答卷，错误提交被拒，刷新后保留', async ({ page }) => {
   await page.goto('/');
   await completeLiveFramePrerequisites(page);
   await submitLiveFrame(page);
@@ -198,9 +202,31 @@ test('桌面端通过 B7 秒级对齐：错误提交被拒，正确提交刷新�
   await page.locator('select[data-b7-time="shot"]').selectOption('23:00:43');
   await page.getByRole('button', { name: '提交对齐' }).click();
   await expect(page.getByText('对齐已确认：机器日志、封条与名单位置三条证据线指向同一顺序。')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '终局答卷' })).toBeVisible();
+  const answers: Record<string, string> = {
+    corpse_body: 'verri',
+    dead_soul: 'niko',
+    shooter_soul: 'kovac',
+    shooter_body: 'kovac',
+    believed_target_soul: 'verri',
+    escaped_soul: 'verri',
+    escaped_body: 'niko',
+    frame_modifier: 'verri',
+    anchored_body: 'niko',
+  };
+  await submitFinalExam(page, { ...answers, dead_soul: 'mara' });
+  await page.getByRole('button', { name: '提交答卷' }).click();
+  await expect(page.getByText('这组答卷与证据冲突。每条结论都必须由至少两处独立证据支撑；系统不会指出应替换哪一项。')).toBeVisible();
+  await submitFinalExam(page, answers);
+  await page.getByRole('button', { name: '提交答卷' }).click();
+  await expect(page.getByRole('heading', { name: '三角还原' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '终局', exact: true })).toBeVisible();
+  await expect(page.getByText('他杀死的是 Niko。')).toBeVisible();
   await page.reload();
-  await expect(page.getByText('对齐已确认：机器日志、封条与名单位置三条证据线指向同一顺序。')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '三角还原' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '终局', exact: true })).toBeVisible();
   await expect(page.locator('select[data-b7-time]')).toHaveCount(0);
+  await expect(page.locator('select[data-exam-field]')).toHaveCount(0);
 });
 
 test('390px 移动端完成实时版框闭环且页面不横向溢出', async ({ page }) => {

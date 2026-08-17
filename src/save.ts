@@ -1,7 +1,8 @@
 import { isSameOrientation } from './ring';
 import { deriveModifiedOccupancy, emptyModifiedFrameDraft, validateModifiedFrame } from './modified-frame';
 import { b7Events, validateB7Alignment } from './b7-timeline';
-import type { ArchiveDocument, ArchiveFilters, B7Alignment, BellId, BodyId, Character, DerivedOccupancyB5B7, EvidenceReference, HintState, HypothesisCell, HypothesisGrid, ModifiedFrameDraft, ModifiedFrameSubmission, Note, PlaytestEvent, SaveV2, SaveV3, SaveV4, TerminalEntry } from './types';
+import { examDraftEmpty, examQuestions, validateExam } from './final-exam';
+import type { ArchiveDocument, ArchiveFilters, B7Alignment, BellId, BodyId, Character, DerivedOccupancyB5B7, EvidenceReference, FinalExam, HintState, HypothesisCell, HypothesisGrid, ModifiedFrameDraft, ModifiedFrameSubmission, Note, PlaytestEvent, SaveV2, SaveV3, SaveV4, TerminalEntry } from './types';
 
 export const storageKey = 'btb.save.v1.current';
 export const backupKey = 'btb.save.v1.backup';
@@ -14,7 +15,7 @@ const now = () => new Date().toISOString();
 export const defaultHintState = (): HintState => ({ nodeKey: 'b0-start', invalidQueries: 0, shownLevel: 0, interactionSinceHint: false, lastProgressAt: now() });
 const emptySaveV2 = (characters: Character[]): SaveV2 => ({ version: 2, discovered: [], read: [], annotations: {}, notes: [], hypotheses: createHypothesisGrid(characters.map((character) => character.id)), queryHistory: [], pinnedDocIds: [], compareDocIds: [], archiveFilters: defaultFilters(), stageSubmissions: {}, draftOriginalRing: [], hintState: defaultHintState(), playtestEvents: [], activeDoc: null, activeSegmentId: null, query: { bell: 'b0', location: 'h_admin', bodies: ['mara', 'kovac', 'verri'] }, attempts: 0, tab: 'query', updatedAt: now() });
 const emptyB7AlignmentDraft: Record<string, string> = Object.fromEntries(b7Events.map((event) => [event.id, '']));
-export const emptySave = (characters: Character[]): SaveV4 => ({ ...emptySaveV2(characters), version: 4, modifiedFrameDraft: emptyModifiedFrameDraft(), derivedOccupancyB5B7: null, terminalLog: [], b7AlignmentDraft: emptyB7AlignmentDraft, b7Alignment: null });
+export const emptySave = (characters: Character[]): SaveV4 => ({ ...emptySaveV2(characters), version: 4, modifiedFrameDraft: emptyModifiedFrameDraft(), derivedOccupancyB5B7: null, terminalLog: [], b7AlignmentDraft: emptyB7AlignmentDraft, b7Alignment: null, finalExamDraft: examDraftEmpty, finalExam: null });
 
 const array = (value: unknown): string[] => Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 const records = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -56,7 +57,7 @@ const parseV2 = (source: Record<string, unknown>, context: SaveContext): SaveV2 
   const gridSource = records(source.hypotheses); const grid = createHypothesisGrid(context.characters.map((character) => character.id));
   for (const bell of hypothesisBells) { const sourceBell = records(gridSource[bell]); if (!Object.keys(sourceBell).length) return null; for (const body of ids) { const cell = records(sourceBell[body]); if (typeof cell.primaryCandidate !== 'string' && cell.primaryCandidate !== null || (typeof cell.primaryCandidate === 'string' && !ids.has(cell.primaryCandidate)) || typeof cell.uncertain !== 'boolean' || !Array.isArray(cell.evidenceRefs)) return null; const refs = cell.evidenceRefs.map((ref) => evidenceRef(ref, documentById)); if (refs.some((ref) => !ref)) return null; grid[bell][body] = { primaryCandidate: cell.primaryCandidate, uncertain: cell.uncertain, evidenceRefs: refs as EvidenceReference[] }; } }
   const history = Array.isArray(source.queryHistory) ? source.queryHistory.map((value) => records(value)) : null; if (!history) return null; const queryHistory = history.map((entry) => typeof entry.key === 'string' && validDate(entry.at) && ['found', 'locked', 'invalid'].includes(entry.result as string) && (entry.docId === undefined || typeof entry.docId === 'string' && documentIds.has(entry.docId)) ? { key: entry.key, at: entry.at as string, result: entry.result as SaveV2['queryHistory'][number]['result'], ...(typeof entry.docId === 'string' ? { docId: entry.docId } : {}) } : null); if (queryHistory.some((entry) => !entry)) return null;
-  const eventKinds = new Set<PlaytestEvent['kind']>(['query', 'invalid_query', 'unlock', 'revisit', 'compare', 'hint', 'b4_reveal', 'hypothesis_edit', 'ring_submit', 'modified_frame_reveal', 'modified_frame_edit', 'modified_frame_submit', 'terminal_command', 'b7_alignment_submit']); if (!Array.isArray(source.playtestEvents)) return null; const events = source.playtestEvents.map((value) => { const event = records(value); return eventKinds.has(event.kind as PlaytestEvent['kind']) && validDate(event.at) ? { kind: event.kind as PlaytestEvent['kind'], at: event.at as string, ...(records(event.detail) ? { detail: Object.fromEntries(Object.entries(records(event.detail)).filter(([, detail]) => ['string', 'number', 'boolean'].includes(typeof detail))) } : {}) } : null; }); if (events.some((event) => !event)) return null;
+  const eventKinds = new Set<PlaytestEvent['kind']>(['query', 'invalid_query', 'unlock', 'revisit', 'compare', 'hint', 'b4_reveal', 'hypothesis_edit', 'ring_submit', 'modified_frame_reveal', 'modified_frame_edit', 'modified_frame_submit', 'terminal_command', 'b7_alignment_submit', 'final_exam_submit']); if (!Array.isArray(source.playtestEvents)) return null; const events = source.playtestEvents.map((value) => { const event = records(value); return eventKinds.has(event.kind as PlaytestEvent['kind']) && validDate(event.at) ? { kind: event.kind as PlaytestEvent['kind'], at: event.at as string, ...(records(event.detail) ? { detail: Object.fromEntries(Object.entries(records(event.detail)).filter(([, detail]) => ['string', 'number', 'boolean'].includes(typeof detail))) } : {}) } : null; }); if (events.some((event) => !event)) return null;
   if (typeof source.attempts !== 'number' || source.attempts < 0 || !Number.isInteger(source.attempts) || !['query', 'archive', 'facts', 'world', 'notes', 'hypotheses'].includes(source.tab as string)) return null;
   return { ...fresh, version: 2, discovered, read, annotations, notes: savedNotes, hypotheses: grid, queryHistory: queryHistory as SaveV2['queryHistory'], pinnedDocIds: pinned, compareDocIds: compare, archiveFilters, stageSubmissions: stage, draftOriginalRing: draft, hintState, playtestEvents: events as PlaytestEvent[], activeDoc, activeSegmentId: activeSegment, query: { bell: query.bell as BellId, location: query.location, bodies: queryBodies }, attempts: source.attempts, tab: source.tab as SaveV2['tab'], updatedAt: source.updatedAt };
 };
@@ -69,7 +70,7 @@ const migrateV1 = (source: Record<string, unknown>, context: SaveContext): SaveV
   return result;
 };
 const upgradeV2 = (save: SaveV2): SaveV3 => ({ ...save, version: 3, modifiedFrameDraft: emptyModifiedFrameDraft(), derivedOccupancyB5B7: null });
-const upgradeV3 = (save: SaveV3): SaveV4 => ({ ...save, version: 4, terminalLog: [], b7AlignmentDraft: emptyB7AlignmentDraft, b7Alignment: null });
+const upgradeV3 = (save: SaveV3): SaveV4 => ({ ...save, version: 4, terminalLog: [], b7AlignmentDraft: emptyB7AlignmentDraft, b7Alignment: null, finalExamDraft: examDraftEmpty, finalExam: null });
 const parseTerminalLog = (value: unknown): TerminalEntry[] | null => {
   if (!Array.isArray(value)) return null;
   const output: TerminalEntry[] = [];
@@ -90,13 +91,28 @@ const parseB7Alignment = (value: unknown): B7Alignment | null => {
   const assigned = parseB7Draft(source.assigned); if (!assigned || !validateB7Alignment(assigned)) return null;
   return { assigned, submittedAt: source.submittedAt as string, correct: true };
 };
+const parseExamDraft = (value: unknown, ids: Set<string>): Record<string, string> | null => {
+  const source = records(value);
+  const draft: Record<string, string> = {};
+  for (const question of examQuestions) { const chosen = source[question.id]; if (chosen !== undefined && (typeof chosen !== 'string' || (chosen !== '' && !ids.has(chosen)))) return null; draft[question.id] = typeof chosen === 'string' ? chosen : ''; }
+  return draft;
+};
+const parseFinalExam = (value: unknown, ids: Set<string>): FinalExam | null => {
+  if (value === null) return null;
+  const source = records(value); if (source.correct !== true || !validDate(source.submittedAt)) return null;
+  const answers = parseExamDraft(source.answers, ids); if (!answers || !validateExam(answers)) return null;
+  return { answers, submittedAt: source.submittedAt as string, correct: true };
+};
 const parseV4 = (source: Record<string, unknown>, context: SaveContext): SaveV4 | null => {
   if (source.version !== 4) return null;
   const base = parseV3({ ...source, version: 3 }, context); if (!base) return null;
   const terminalLog = parseTerminalLog(source.terminalLog); if (!terminalLog) return null;
   const b7AlignmentDraft = parseB7Draft(source.b7AlignmentDraft); if (!b7AlignmentDraft) return null;
   const b7Alignment = source.b7Alignment === undefined ? null : parseB7Alignment(source.b7Alignment); if (source.b7Alignment !== undefined && b7Alignment === null && source.b7Alignment !== null) return null;
-  return { ...base, version: 4, terminalLog, b7AlignmentDraft, b7Alignment };
+  const ids = new Set(context.characters.map((character) => character.id));
+  const finalExamDraft = parseExamDraft(source.finalExamDraft, ids); if (!finalExamDraft) return null;
+  const finalExam = source.finalExam === undefined ? null : parseFinalExam(source.finalExam, ids); if (source.finalExam !== undefined && finalExam === null && source.finalExam !== null) return null;
+  return { ...base, version: 4, terminalLog, b7AlignmentDraft, b7Alignment, finalExamDraft, finalExam };
 };
 const parseModifiedDraft = (value: unknown, ids: Set<string>, documentById: Map<string, ArchiveDocument>, discovered: string[]): ModifiedFrameDraft | null => {
   const source = records(value); if (!Object.keys(source).length) return null;
