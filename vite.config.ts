@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  // GitHub Actions sets this for project pages; localhost remains rooted.
-  base: process.env.GITHUB_ACTIONS ? '/The_Seventh_Chime/' : '/',
+  // The project is served from its configured custom domain, not a repository subpath.
+  base: '/',
 });
