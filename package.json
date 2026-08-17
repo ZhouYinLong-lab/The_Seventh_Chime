@@ -7,11 +7,14 @@
     "dev": "vite",
     "typecheck": "tsc --noEmit",
     "validate:content": "node scripts/validate-content.mjs",
-    "test": "node --test tests/content.test.mjs",
+    "test": "tsx --test tests/playable-slice.test.ts && node --test tests/content.test.mjs",
+    "test:e2e": "playwright test",
     "build": "npm run validate:content && npm run typecheck && npm run test && vite build && node scripts/verify-dist.mjs",
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
+    "tsx": "^4.23.12",
     "typescript": "^5.7.3",
     "vite": "^6.0.7"
   }

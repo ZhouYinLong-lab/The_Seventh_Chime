@@ -1,0 +1,31 @@
+import type { ArchiveFilters, BellId, BodyId, Character, HypothesisCell, HypothesisGrid, Note, PlaytestEvent, SaveV2 } from './types';
+
+export const storageKey = 'btb.save.v1.current';
+export const backupKey = 'btb.save.v1.backup';
+const bells: BellId[] = ['b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7'];
+const hypothesisBells = bells.slice(1) as BellId[];
+const emptyCell = (): HypothesisCell => ({ primaryCandidate: null, uncertain: true, evidenceRefs: [] });
+export const createHypothesisGrid = (characterIds: BodyId[]) => Object.fromEntries(hypothesisBells.map((bell) => [bell, Object.fromEntries(characterIds.map((body) => [body, emptyCell()]))])) as HypothesisGrid;
+export const defaultFilters = (): ArchiveFilters => ({ bell: 'all', location: 'all', body: 'all', tag: 'all', read: 'all' });
+export const emptySave = (characters: Character[]): SaveV2 => ({ version: 2, discovered: [], read: [], annotations: {}, notes: [], hypotheses: createHypothesisGrid(characters.map((character) => character.id)), queryHistory: [], pinnedDocIds: [], compareDocIds: [], archiveFilters: defaultFilters(), stageSubmissions: {}, draftOriginalRing: [], playtestEvents: [], activeDoc: null, activeSegmentId: null, query: { bell: 'b0', location: 'h_admin', bodies: ['mara', 'kovac', 'verri'] }, attempts: 0, tab: 'query', updatedAt: new Date().toISOString() });
+const array = (value: unknown): string[] => Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
+const records = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+const notes = (value: unknown): Note[] => Array.isArray(value) ? value.flatMap((item, index) => { const note = records(item); const text = typeof note.text === 'string' ? note.text : ''; if (!text) return []; const refs = Array.isArray(note.refs) ? note.refs.flatMap((ref) => typeof ref === 'string' ? [{ docId: ref }] : []) : []; return [{ id: typeof note.id === 'string' ? note.id : `legacy-${index}`, text, refs }]; }) : [];
+export const migrateSave = (raw: unknown, characters: Character[]): SaveV2 | null => {
+  const source = records(raw); if (!Object.keys(source).length) return null;
+  const fresh = emptySave(characters); const ids = new Set(characters.map((character) => character.id)); const validIds = (value: unknown) => array(value).filter((id) => ids.has(id));
+  const annotations = Object.fromEntries(Object.entries(records(source.annotations)).map(([doc, tags]) => [doc, array(tags)]));
+  const result: SaveV2 = { ...fresh, discovered: array(source.discovered), read: array(source.read), annotations, notes: notes(source.notes), activeDoc: typeof source.activeDoc === 'string' ? source.activeDoc : null, activeSegmentId: typeof source.activeSegmentId === 'string' ? source.activeSegmentId : null, attempts: typeof source.attempts === 'number' ? source.attempts : 0, updatedAt: typeof source.updatedAt === 'string' ? source.updatedAt : fresh.updatedAt };
+  const query = records(source.query); if (bells.includes(query.bell as BellId)) result.query.bell = query.bell as BellId; if (typeof query.location === 'string') result.query.location = query.location; result.query.bodies = validIds(query.bodies).slice(0, 3);
+  if (source.tab === 'query' || source.tab === 'archive' || source.tab === 'facts' || source.tab === 'notes' || source.tab === 'hypotheses') result.tab = source.tab;
+  if (source.version === 2) {
+    result.pinnedDocIds = array(source.pinnedDocIds); result.compareDocIds = array(source.compareDocIds).slice(0, 2);
+    result.queryHistory = Array.isArray(source.queryHistory) ? source.queryHistory.flatMap((item) => { const entry = records(item); return typeof entry.key === 'string' && typeof entry.at === 'string' && (entry.result === 'found' || entry.result === 'locked' || entry.result === 'invalid') ? [{ key: entry.key, at: entry.at, result: entry.result, ...(typeof entry.docId === 'string' ? { docId: entry.docId } : {}) }] : []; }) : [];
+    result.archiveFilters = { ...fresh.archiveFilters, ...records(source.archiveFilters) } as ArchiveFilters; result.draftOriginalRing = validIds(source.draftOriginalRing); result.stageSubmissions = records(source.stageSubmissions) as SaveV2['stageSubmissions']; result.playtestEvents = Array.isArray(source.playtestEvents) ? source.playtestEvents.filter((item): item is PlaytestEvent => Boolean(records(item).kind && records(item).at)) : [];
+    const grids = records(source.hypotheses); for (const bell of hypothesisBells) for (const body of ids) { const cell = records(records(grids[bell])[body]); if (typeof cell.primaryCandidate === 'string' && ids.has(cell.primaryCandidate)) result.hypotheses[bell][body].primaryCandidate = cell.primaryCandidate; if (typeof cell.uncertain === 'boolean') result.hypotheses[bell][body].uncertain = cell.uncertain; result.hypotheses[bell][body].evidenceRefs = Array.isArray(cell.evidenceRefs) ? cell.evidenceRefs.flatMap((ref) => { const value = records(ref); return typeof value.docId === 'string' ? [{ docId: value.docId, ...(typeof value.segmentId === 'string' ? { segmentId: value.segmentId } : {}) }] : []; }) : []; }
+  } else if (Array.isArray(source.hypotheses)) for (const item of source.hypotheses) { const legacy = records(item); if (typeof legacy.body === 'string' && typeof legacy.soul === 'string' && ids.has(legacy.body) && ids.has(legacy.soul)) result.hypotheses.b1[legacy.body].primaryCandidate = legacy.soul; }
+  return result;
+};
+export const loadSave = (characters: Character[]) => { for (const key of [storageKey, backupKey]) try { const migrated = migrateSave(JSON.parse(localStorage.getItem(key) || 'null'), characters); if (migrated) return migrated; } catch { /* try backup */ } return emptySave(characters); };
+export const persistSave = (state: SaveV2) => { state.updatedAt = new Date().toISOString(); localStorage.setItem(backupKey, localStorage.getItem(storageKey) || ''); localStorage.setItem(storageKey, JSON.stringify(state)); };
+export const recordEvent = (state: SaveV2, kind: PlaytestEvent['kind'], detail?: PlaytestEvent['detail']) => { state.playtestEvents.push({ kind, at: new Date().toISOString(), ...(detail ? { detail } : {}) }); };
