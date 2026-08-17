@@ -21,9 +21,10 @@
 }
 
 * { box-sizing: border-box; }
-html { background: var(--bg-primary); }
+html { max-width: 100%; overflow-x: hidden; background: var(--bg-primary); }
 body {
   margin: 0;
+  max-width: 100%;
   min-width: 320px;
   overflow-x: hidden;
   background-color: var(--bg-primary);
@@ -62,6 +63,7 @@ select, textarea {
 }
 textarea { resize: vertical; }
 label, fieldset { display: block; margin: .6rem 0; }
+fieldset { min-inline-size: 0; }
 fieldset { border: 1px solid var(--border); padding: .55rem .7rem .7rem; background: rgba(4, 14, 23, .2); }
 legend { color: var(--accent-primary); padding: 0 .3rem; font-size: .85rem; }
 
@@ -279,6 +281,7 @@ th:first-child { position: sticky; left: 0; background: var(--bg-secondary); tex
   color: var(--paper-ink);
   box-shadow: inset 0 0 0 1px rgba(69, 53, 32, .12);
 }
+#app { max-width: 100%; overflow-x: hidden; }
 .ring-workbench legend { color: #6e5b34; }
 .ring-workbench .small { color: #50636a; }
 .ring-workbench select { border-color: #9c8d6c; background: rgba(255, 253, 244, .75); color: var(--paper-ink); }
@@ -325,6 +328,7 @@ th:first-child { position: sticky; left: 0; background: var(--bg-secondary); tex
   .mobile-nav button { min-height: 40px; white-space: nowrap; }
   .mobile-nav .active { border-color: var(--accent-primary); color: var(--accent-primary); }
   .workspace { display: block; padding: .8rem; }
+  .workspace, .workspace > *, .panel, .live-frame, .live-evidence, .live-evidence li { min-width: 0; max-width: 100%; }
   .workspace > aside, .workspace > section { display: none; }
   .workspace > .mobile-visible { display: grid; margin-bottom: .8rem; }
   .left.mobile-visible, .right.mobile-visible { gap: .8rem; }
@@ -333,6 +337,7 @@ th:first-child { position: sticky; left: 0; background: var(--bg-secondary); tex
   .archive-heading { flex-direction: column; }
   .ring-inputs { grid-template-columns: 1fr 1fr; }
   .live-fields, .six-ring-inputs { grid-template-columns: 1fr; }
+  .live-evidence li button:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .body-options { grid-template-columns: 1fr; }
   .archive-filters { grid-template-columns: 1fr; }
   .compare-reader { grid-template-columns: 1fr; }
