@@ -7,6 +7,7 @@ const worldEntries = JSON.parse(await readFile(new URL('../src/data/world-conten
 publicData.documents = [...publicData.documents, ...extendedDocuments];
 const author = JSON.parse(await readFile(new URL('../author/baseline.json', import.meta.url), 'utf8'));
 const fail = (message) => { throw new Error(`内容校验失败：${message}`); };
+const forbiddenPreReveal = ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改'];
 const bodies = Object.keys(author.locations);
 const bellOrder = ['b0','b1','b2','b3','b4','b5','b6','b7'];
 const graph = { h:['h','r','j','a','c'], r:['r','h'], j:['j','h'], a:['a','h','c'], c:['c','h','a'] };
@@ -33,6 +34,10 @@ for (const doc of publicData.documents) {
   if (new Set(doc.bodies).size !== doc.bodies.length) fail(`${doc.id} 的查询肉体重复。`);
   if (doc.prerequisites.some((id) => !documentIds.has(id))) fail(`${doc.id} 引用了不存在的解锁前置。`);
   if (!doc.sceneId || !sceneIds.includes(doc.sceneId)) fail(`${doc.id} 未引用有效场景。`);
+  if (!Array.isArray(doc.hints) || doc.hints.length < 1) fail(`${doc.id} 缺少推进提示。`);
+  for (const hint of doc.hints) {
+    for (const term of forbiddenPreReveal) if (hint.includes(term)) fail(`${doc.id} 的推进提示在揭示前可见文本中使用了「${term}」。`);
+  }
 }
 const visit = (id, path = new Set()) => {
   if (path.has(id)) fail(`解锁图存在循环：${[...path, id].join(' → ')}`);
@@ -43,7 +48,6 @@ publicData.documents.forEach((doc) => visit(doc.id));
 if (!publicData.documents.some((doc) => doc.initial)) fail('新存档没有初始可查询档案。');
 const itemPaths = Object.values(author.items).flat();
 if (!itemPaths.every((entry) => /^b[0-7]:/.test(entry))) fail('物件路径格式不连续或缺少时段。');
-const forbiddenPreReveal = ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改'];
 const itemIds = new Set(items.map((item) => item.id));
 if (itemIds.size !== items.length) fail('物品 ID 必须唯一。');
 const normalise = (input) => { const folded = input.normalize('NFKC').normalize('NFKD'); let output = ''; for (const char of folded) { const code = char.codePointAt(0); if (code < 0x300 || code > 0x36f) output += char; } return output.toUpperCase().replace(/[^A-Z0-9㐀-鿿]/g, ''); };

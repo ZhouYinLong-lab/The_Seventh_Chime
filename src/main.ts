@@ -7,7 +7,7 @@ import { isSameOrientation } from './ring';
 import { deriveModifiedOccupancy, liveFrameAvailable, validateModifiedFrame } from './modified-frame';
 import { loadSave, migrateSave, persistSave, recordEvent, storageKey, backupKey, emptySave } from './save';
 import { render } from './render';
-import { canonicalKey, completionFor, discoveredKeys, parseSceneKey, terminalHelp } from './terminal';
+import { canonicalKey, completionFor, discoveredKeys, normaliseKey, parseSceneKey, terminalHelp } from './terminal';
 import type { ArchiveDocument, SaveV4 } from './types';
 
 const app = document.querySelector<HTMLElement>('#app');
@@ -24,6 +24,14 @@ const maybeRevealLiveFrame = () => { if (liveFrameAvailable(state) && !state.pla
 const openDoc = (id: string) => { const doc = documents.get(id); if (!doc) return; const wasRead = state.read.includes(id); state.activeDoc = id; state.activeSegmentId = null; markInteraction(); if (!wasRead) state.read.push(id); else recordEvent(state, 'revisit', { docId: id }); saveAndRender(); setTimeout(() => document.querySelector<HTMLElement>('#reader')?.focus(), 0); };
 const discover = (id: string) => { const doc = documents.get(id); if (!doc) return; if (!state.discovered.includes(id)) { state.discovered.push(id); recordEvent(state, 'unlock', { docId: id, bell: doc.bell }); resetHintsForProgress(); if (id === 'doc_b4_a_mateo') { recordEvent(state, 'b4_reveal'); feedback = '原始校样已归档。旧记录的异常标签现在可以按新证据重新阅读。'; } } state.activeDoc = id; state.activeSegmentId = null; if (!state.read.includes(id)) state.read.push(id); maybeRevealLiveFrame(); };
 type QueryResult = 'found' | 'locked' | 'invalid';
+const countInvalid = (key: string, locked: boolean) => {
+  state.attempts += 1;
+  state.queryHistory.push({ key, at: new Date().toISOString(), result: locked ? 'locked' : 'invalid' });
+  const node = currentProgressNode(state.discovered);
+  if (state.hintState.nodeKey !== node) state.hintState = resetHintState(node);
+  state.hintState.invalidQueries += 1;
+  recordEvent(state, 'invalid_query', { key, locked, node });
+};
 const executeQuery = (): QueryResult => {
   const doc = findByQuery(content.documents, state.query);
   const key = queryKey(state.query);
@@ -36,34 +44,28 @@ const executeQuery = (): QueryResult => {
     feedback = revisiting ? `重新打开：${doc.title}。` : `已找到：${doc.title}。`;
     return 'found';
   }
-  state.attempts += 1;
-  const result = doc ? 'locked' : 'invalid';
-  state.queryHistory.push({ key, at: new Date().toISOString(), result, ...(doc ? { docId: doc.id } : {}) });
-  const node = currentProgressNode(state.discovered);
-  if (state.hintState.nodeKey !== node) state.hintState = resetHintState(node);
-  state.hintState.invalidQueries += 1;
-  recordEvent(state, 'invalid_query', { key, locked: Boolean(doc), node });
+  countInvalid(key, Boolean(doc));
   feedback = doc ? '当前线索尚不足以确认这条记录。继续检查已经打开的档案。' : '没有找到符合这些条件的主要记录。';
-  return result;
+  return doc ? 'locked' : 'invalid';
 };
 const toggleCompare = (id: string) => { state.compareDocIds = state.compareDocIds.includes(id) ? state.compareDocIds.filter((item) => item !== id) : [...state.compareDocIds.slice(-1), id]; recordEvent(state, 'compare', { docId: id, selected: state.compareDocIds.includes(id) }); saveAndRender(); };
 const importSave = (file: File) => file.text().then((text) => { try { const parsed = JSON.parse(text) as { save?: unknown }; const imported = migrateSave(parsed.save ?? parsed, content.characters, content.documents); if (!imported) throw new Error('bad save'); state = imported; feedback = '进度已导入；旧版存档已安全迁移到当前结构。'; saveAndRender(); } catch { feedback = '导入失败：文件包含损坏或不存在的档案、推演或引用，现有进度未被覆盖。'; render(app, state, feedback, isB4Revealed(state.discovered), storageNotice); } });
 
-type ResolveStatus = { status: 'ok'; doc: ArchiveDocument } | { status: 'error' } | { status: 'locked' } | { status: 'invalid' };
+type ResolveStatus = { status: 'ok'; doc: ArchiveDocument } | { status: 'error' } | { status: 'locked'; doc: ArchiveDocument } | { status: 'invalid' };
 const resolveKey = (raw: string, requireDiscovered: boolean): ResolveStatus => {
   const parsed = parseSceneKey(raw);
   if (!parsed) return { status: 'error' };
   const doc = findByQuery(content.documents, parsed);
   if (!doc) return { status: 'invalid' };
-  if (!isReady(doc, state.discovered) || (requireDiscovered && !state.discovered.includes(doc.id))) return { status: 'locked' };
+  if (!isReady(doc, state.discovered) || (requireDiscovered && !state.discovered.includes(doc.id))) return { status: 'locked', doc };
   return { status: 'ok', doc };
 };
 const appendTerminal = (input: string, output: string[]) => { state.terminalLog.push({ input, output, at: new Date().toISOString() }); state.terminalLog = state.terminalLog.slice(-60); };
 const openByKey = (raw: string): string[] => {
   const resolved = resolveKey(raw, false);
   if (resolved.status === 'error') return ['档案编号无法识别。格式：时段-地点-肉体，例如 OPEN B0-H-MARA-KOVAC-VERRI。'];
-  if (resolved.status === 'invalid') return ['没有找到符合这些条件的主要记录。'];
-  if (resolved.status === 'locked') return ['当前线索尚不足以确认这条记录。继续检查已经打开的档案。'];
+  if (resolved.status === 'invalid') { countInvalid(normaliseKey(raw), false); return ['没有找到符合这些条件的主要记录。']; }
+  if (resolved.status === 'locked') { countInvalid(canonicalKey(resolved.doc), true); return ['当前线索尚不足以确认这条记录。继续检查已经打开的档案。']; }
   state.query = { bell: resolved.doc.bell, location: resolved.doc.location, bodies: [...resolved.doc.bodies] };
   executeQuery();
   return [`${canonicalKey(resolved.doc)} · ${resolved.doc.title}`, '已归档。'];
@@ -72,8 +74,8 @@ const compareByKeys = (left: string, right: string): string[] => {
   const first = resolveKey(left, true);
   const second = resolveKey(right, true);
   if (first.status === 'error' || second.status === 'error') return ['档案编号无法识别。格式：时段-地点-肉体，例如 COMPARE B0-R-KLARA B0-C-NIKO。'];
-  if (first.status === 'invalid' || second.status === 'invalid') return ['没有找到符合这些条件的主要记录。'];
-  if (first.status === 'locked' || second.status === 'locked') return ['当前线索尚不足以确认这条记录。继续检查已经打开的档案。'];
+  if (first.status === 'invalid' || second.status === 'invalid') { countInvalid(normaliseKey(first.status === 'invalid' ? left : right), false); return ['没有找到符合这些条件的主要记录。']; }
+  if (first.status === 'locked' || second.status === 'locked') { const failed = first.status === 'locked' ? first : second; if (failed.status === 'locked') countInvalid(canonicalKey(failed.doc), true); return ['当前线索尚不足以确认这条记录。继续检查已经打开的档案。']; }
   state.compareDocIds = [first.doc.id, second.doc.id];
   recordEvent(state, 'compare', { docId: first.doc.id, selected: true });
   recordEvent(state, 'compare', { docId: second.doc.id, selected: true });

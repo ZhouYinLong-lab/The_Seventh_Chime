@@ -109,6 +109,18 @@ test('移动端世界标签展示背景志且不泄露正式推演术语', async
   await expect(page.locator('[data-action="tab"][data-tab="world"]')).toHaveClass(/active/);
 });
 
+test('HINT 在连续无效查询后逐级开放且不泄露正式推演术语', async ({ page }) => {
+  await page.goto('/');
+  await run(page, 'HINT');
+  await expect(log(page).last()).toContainText('提示尚未就绪');
+  for (let i = 0; i < 9; i++) await run(page, 'OPEN B7-R-KLARA-KOVAC-VERRI');
+  await run(page, 'HINT');
+  const lastEntry = page.locator('.terminal-log li.terminal-entry').last();
+  await expect(lastEntry).toContainText('> HINT');
+  await expect(lastEntry).not.toContainText('提示尚未就绪');
+  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改']) await expect(page.locator('body')).not.toContainText(forbidden);
+});
+
 test('INSPECT 命中物品档案且不泄露正式推演术语', async ({ page }) => {
   await page.goto('/');
   await run(page, 'INSPECT K-17');

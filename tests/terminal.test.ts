@@ -4,6 +4,7 @@ import { content, documents } from '../src/content.ts';
 import { findItem, items, normaliseItem } from '../src/items.ts';
 import { emptySave, migrateSave } from '../src/save.ts';
 import { worldEntries, worldPanel } from '../src/world.ts';
+import { currentProgressNode, hintFor } from '../src/hints.ts';
 import { canonicalKey, completionFor, normaliseKey, parseSceneKey, terminalHelp } from '../src/terminal.ts';
 
 test('normaliseKey 忽略大小写、分隔符与变音符号', () => {
@@ -120,4 +121,29 @@ test('world 标签存档往返', () => {
   save.tab = 'world';
   const reloaded = migrateSave(JSON.parse(JSON.stringify(save)), content.characters, content.documents);
   assert.equal(reloaded?.tab, 'world');
+});
+
+test('提示四层逐级收敛到可直接输入的查询键', () => {
+  const discovered = content.documents.filter((doc) => doc.initial).map((doc) => doc.id);
+  const node = currentProgressNode(discovered);
+  assert.ok(node, '应存在可推进节点');
+  const doc = content.documents.find((candidate) => candidate.id === node);
+  assert.ok(doc, '节点应对应一份档案');
+  const l1 = hintFor(node, 1);
+  const l2 = hintFor(node, 2);
+  const l3 = hintFor(node, 3);
+  const l4 = hintFor(node, 4);
+  assert.ok(l1.length > 0 && l2.includes('下一步记录'));
+  assert.ok(l4.includes(canonicalKey(doc)), `第四层应给出查询键 ${canonicalKey(doc)}`);
+  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改']) {
+    assert.ok(![l1, l2, l3, l4].join(' ').includes(forbidden), `提示含 ${forbidden}`);
+  }
+});
+
+test('全部档案已发现时节点收敛到 final', () => {
+  const all = content.documents.map((doc) => doc.id);
+  assert.equal(currentProgressNode(all), 'final');
+  const l1 = hintFor('final', 1);
+  assert.ok(l1.includes('所有档案都已打开'));
+  assert.ok(hintFor('final', 4).includes('两份互相独立'));
 });
