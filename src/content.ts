@@ -1,0 +1,16 @@
+import rawContent from './data/public-content.json';
+import rawExtended from './data/extended-documents.json';
+import type { ArchiveDocument, BodyId, Content, LocationId, QueryState } from './types';
+const base = rawContent as unknown as Content;
+const extended = rawExtended as unknown as ArchiveDocument[];
+export const content: Content = { ...base, documents: [...base.documents, ...extended] };
+export const documents = new Map(content.documents.map((doc) => [doc.id, doc]));
+export const characters = new Map(content.characters.map((character) => [character.id, character]));
+export const locations = new Map(content.locations.map((location) => [location.id, location]));
+export const bodyName = (id: BodyId) => characters.get(id)?.cn ?? id;
+export const locationName = (id: LocationId) => locations.get(id)?.name ?? id;
+export const bellName = (id: string) => content.bells.find((bell) => bell.id === id)?.label ?? id.toUpperCase();
+export const canonicalBodies = (bodies: BodyId[]) => [...new Set(bodies)].sort().join('+');
+export const queryKey = (query: QueryState) => `${query.bell}:${query.location}:${canonicalBodies(query.bodies)}`;
+export const tagName = (id: string, revealed: boolean) => content.tags[id]?.[revealed ? 'after' : 'before'] ?? id;
+export const isB4Revealed = (discovered: string[]) => discovered.includes('doc_b4_a_mateo');
