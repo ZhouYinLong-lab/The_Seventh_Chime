@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 const publicData = JSON.parse(await readFile(new URL('../src/data/public-content.json', import.meta.url), 'utf8'));
 const extendedDocuments = JSON.parse(await readFile(new URL('../src/data/extended-documents.json', import.meta.url), 'utf8'));
 const items = JSON.parse(await readFile(new URL('../src/data/items.json', import.meta.url), 'utf8'));
+const worldEntries = JSON.parse(await readFile(new URL('../src/data/world-content.json', import.meta.url), 'utf8'));
 publicData.documents = [...publicData.documents, ...extendedDocuments];
 const author = JSON.parse(await readFile(new URL('../author/baseline.json', import.meta.url), 'utf8'));
 const fail = (message) => { throw new Error(`内容校验失败：${message}`); };
@@ -58,6 +59,12 @@ for (const item of items) {
   }
   for (const term of forbiddenPreReveal) if (`${item.name}${item.description}${item.aliases.join('')}`.includes(term)) fail(`${item.id} 在揭示前可见文本中使用了「${term}」。`);
 }
+const worldIds = new Set(worldEntries.map((entry) => entry.id));
+if (worldIds.size !== worldEntries.length) fail('背景条目 ID 必须唯一。');
+for (const entry of worldEntries) {
+  if (!entry.title || !entry.text) fail(`${entry.id} 缺少标题或正文。`);
+  for (const term of forbiddenPreReveal) if (`${entry.title}${entry.text}`.includes(term)) fail(`${entry.id} 在揭示前可见文本中使用了「${term}」。`);
+}
 const expectedTimeline = ['jump','tape_start_and_interlock','list_to_signal_room','identity_check_blocked','holster_seal_broken','shot','tape_complete'];
 if (author.b7Timeline.map(([, event]) => event).join('|') !== expectedTimeline.join('|')) fail('B7 秒级顺序被改变。');
-console.log(`内容校验通过：${sceneIds.length} 个场景、${publicData.documents.length} 份玩家档案、${items.length} 件物品、B7 顺序固定。`);
+console.log(`内容校验通过：${sceneIds.length} 个场景、${publicData.documents.length} 份玩家档案、${items.length} 件物品、${worldEntries.length} 条背景、B7 顺序固定。`);

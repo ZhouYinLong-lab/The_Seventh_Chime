@@ -98,6 +98,17 @@ test('390px 移动端指令台可查询且页面不横向溢出', async ({ page 
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
+test('移动端世界标签展示背景志且不泄露正式推演术语', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.locator('[data-action="tab"][data-tab="world"]').click();
+  await expect(page.locator('.world-panel h2')).toHaveText('1928 · 圣维拉');
+  await expect(page.locator('.world-panel')).toContainText('维护井');
+  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改']) await expect(page.locator('body')).not.toContainText(forbidden);
+  await page.reload();
+  await expect(page.locator('[data-action="tab"][data-tab="world"]')).toHaveClass(/active/);
+});
+
 test('INSPECT 命中物品档案且不泄露正式推演术语', async ({ page }) => {
   await page.goto('/');
   await run(page, 'INSPECT K-17');

@@ -3,6 +3,7 @@ import test from 'node:test';
 import { content, documents } from '../src/content.ts';
 import { findItem, items, normaliseItem } from '../src/items.ts';
 import { emptySave, migrateSave } from '../src/save.ts';
+import { worldEntries, worldPanel } from '../src/world.ts';
 import { canonicalKey, completionFor, normaliseKey, parseSceneKey, terminalHelp } from '../src/terminal.ts';
 
 test('normaliseKey 忽略大小写、分隔符与变音符号', () => {
@@ -98,4 +99,25 @@ test('物品档案在揭示前不含正式推演术语', () => {
     for (const item of items) assert.ok(!`${item.name}${item.description}${item.aliases.join('')}`.includes(forbidden), `${item.id} 含有 ${forbidden}`);
   }
   assert.ok(items.length >= 13, '物品登记簿过小');
+});
+
+test('背景志条目 ID 唯一且揭示前文本干净', () => {
+  const ids = worldEntries.map((entry) => entry.id);
+  assert.equal(new Set(ids).size, ids.length);
+  assert.ok(worldEntries.length >= 6, '背景条目过少');
+  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改']) {
+    for (const entry of worldEntries) assert.ok(!`${entry.title}${entry.text}`.includes(forbidden), `${entry.id} 含有 ${forbidden}`);
+  }
+});
+
+test('背景志面板渲染全部条目', () => {
+  const html = worldPanel();
+  for (const entry of worldEntries) assert.ok(html.includes(entry.title), `${entry.id} 未渲染`);
+});
+
+test('world 标签存档往返', () => {
+  const save = emptySave(content.characters);
+  save.tab = 'world';
+  const reloaded = migrateSave(JSON.parse(JSON.stringify(save)), content.characters, content.documents);
+  assert.equal(reloaded?.tab, 'world');
 });
