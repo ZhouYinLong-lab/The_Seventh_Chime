@@ -12,6 +12,7 @@ const ARCHIVE_TITLES: Record<string, string> = {
 };
 
 const query = async (page: Page, bell: string, location: string, bodies: string[], title: string) => {
+  await page.keyboard.press('Escape');
   await page.selectOption('#bell', bell);
   await page.selectOption('#location', location);
   for (const input of await page.locator('input[data-body]').all()) if (await input.isChecked()) await input.uncheck();
@@ -58,15 +59,18 @@ const showArchive = async (page: Page) => {
   if (await archiveTab.isVisible()) await archiveTab.click();
 };
 
+const closeOverlay = async (page: Page) => { await page.keyboard.press('Escape'); await expect(page.locator('.overlay')).toHaveCount(0); };
+
 const addLiveEvidence = async (page: Page) => {
-  await showArchive(page);
   await page.locator('#reader .entry.current').getByRole('button', { name: '选中本段' }).first().click();
+  await closeOverlay(page);
   await showInference(page);
   await page.getByRole('button', { name: '引用当前选中段' }).click();
 };
 
 const completeLiveFramePrerequisites = async (page: Page) => {
   await completeB4(page);
+  await closeOverlay(page);
   await showInference(page);
   await submitRing(page);
   await showQuery(page);
@@ -77,6 +81,7 @@ const completeLiveFramePrerequisites = async (page: Page) => {
   await query(page, 'b5', 'a_archive', ['niko', 'mateo'], '维护井来客');
   await query(page, 'b3', 'c_bell', ['niko'], '镜像姓名');
   await query(page, 'b6', 'a_archive', ['niko'], '六槽副表');
+  await closeOverlay(page);
   await showInference(page);
   await expect(page.getByRole('heading', { name: '实时版框' })).toBeVisible();
 };
@@ -107,6 +112,7 @@ test('桌面端派生表证据入口按列打开对应档案', async ({ page }) 
   await page.locator('button.derived-fact[data-bell="b6"]').first().click();
   await expect(page.locator('#reader h2')).toHaveText('档案区 调阅记录');
   await expect(page.locator('#reader .entry[data-doc] h3').filter({ hasText: '六槽副表' })).toHaveText('六槽副表');
+  await closeOverlay(page);
   await showInference(page);
   await page.locator('button.derived-fact[data-bell="b7"]').first().click();
   await expect(page.locator('#reader h2')).toHaveText('档案区 调阅记录');
@@ -118,6 +124,7 @@ test('桌面端新存档通过 B0–B4，提交圆环后刷新仍保留', async 
   await completeB4(page);
   await expect(page.getByRole('heading', { name: '灵魂假设' })).toBeVisible();
   await page.locator('#reader .entry.current').getByRole('button', { name: '选中本段' }).first().click();
+  await closeOverlay(page);
   const maraHypothesis = page.locator('.hypothesis-grid tr').filter({ has: page.locator('select[data-hyp-body="mara"]') });
   await maraHypothesis.getByRole('button', { name: '引用当前段' }).click();
   await expect(maraHypothesis.getByRole('button', { name: '证据 1' })).toBeVisible();
@@ -181,10 +188,20 @@ test('地图点房间打开整本档案，名册点开人事卷宗', async ({ pa
   await page.locator('.room-card[data-archive="arch_loc_r_radio"]').click();
   await expect(page.locator('#reader h2')).toHaveText('电讯区 收发记录');
   await expect(page.locator('#reader .entry.seal')).toHaveCount(8);
+  await closeOverlay(page);
   await page.locator('.roster-card[data-archive="arch_person_verri"]').click();
   await expect(page.locator('#reader h2')).toHaveText('《奥古斯托·维里 人事卷宗》');
   await expect(page.locator('#reader .entry.seal')).toHaveCount(8);
   for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改', '肉体']) await expect(page.locator('body')).not.toContainText(forbidden);
+});
+
+test('档案浮层可用 Esc 关闭并回到场景', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.room-card[data-archive="arch_loc_r_radio"]').click();
+  await expect(page.locator('#reader h2')).toHaveText('电讯区 收发记录');
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.overlay')).toHaveCount(0);
+  await expect(page.locator('.facility-map')).toBeVisible();
 });
 
 test('档案库两组 12 项并可直接翻书', async ({ page }) => {
@@ -212,10 +229,11 @@ test('移动端维持单栏 B0–B4 推演闭环', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   await completeB4(page);
+  await closeOverlay(page);
   await expect(page.getByRole('button', { name: '推演' })).toBeVisible();
   await page.getByRole('button', { name: '推演' }).click();
   await submitRing(page);
-  await expect(page.locator('.workspace')).toHaveCSS('display', 'block');
+  await expect(page.locator('.right-panel[data-tab-panel="hypotheses"]')).toBeVisible();
 });
 
 test('桌面端通过六槽副表提交实时版框，B5–B7 演算刷新后保留', async ({ page }) => {
@@ -254,6 +272,7 @@ const citeExamEvidence = async (page: Page, category: string, bell: string, loca
   await showQuery(page);
   await query(page, bell, location, bodies, title);
   await page.locator('#reader .entry.current').getByRole('button', { name: '选中本段' }).first().click();
+  await closeOverlay(page);
   await showInference(page);
   await page.locator(`button[data-action="add-exam-evidence"][data-category="${category}"]`).click();
 };
@@ -263,6 +282,7 @@ test('桌面端完成 B7 秒级对齐与终局答卷，错误提交被拒，刷�
   await completeLiveFramePrerequisites(page);
   await submitLiveFrame(page);
   await completeB7Chain(page);
+  await closeOverlay(page);
   await expect(page.getByRole('heading', { name: 'B7 秒级对齐' })).toBeVisible();
   const times: Record<string, string> = {
     jump: '23:00:00',
