@@ -10,6 +10,8 @@ export interface ArchiveDocument { id: string; sceneId: string; title: string; b
 export interface Content { contentVersion: string; bells: Bell[]; characters: Character[]; locations: Location[]; tags: Record<TagId, { before: string; after: string }>; documents: ArchiveDocument[]; hints: string[] }
 export interface QueryState { bell: BellId; location: LocationId; bodies: BodyId[] }
 export interface ArchiveFilters { bell: BellId | 'all'; location: LocationId | 'all'; body: BodyId | 'all'; tag: TagId | 'all'; read: 'all' | 'read' | 'unread' }
+export type ArchiveKind = 'location' | 'person';
+export interface ArchiveMeta { id: string; kind: ArchiveKind; entityId: string; title: string; subtitle: string; description: string }
 export interface EvidenceReference { docId: string; segmentId?: string }
 export type ExamCategory = 'body_location' | 'soul_identity' | 'causal_continuity';
 export interface HypothesisCell { primaryCandidate: BodyId | null; uncertain: boolean; evidenceRefs: EvidenceReference[] }

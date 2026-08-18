@@ -49,6 +49,33 @@ const visit = (id, path = new Set()) => {
 };
 publicData.documents.forEach((doc) => visit(doc.id));
 if (!publicData.documents.some((doc) => doc.initial)) fail('新存档没有初始可查询档案。');
+const archives = JSON.parse(await readFile(new URL('../src/data/archives.json', import.meta.url), 'utf8'));
+if (!Array.isArray(archives) || archives.length !== 12) fail('档案层必须恰有 12 本档案。');
+const archiveIds = new Set();
+const locationEntityIds = new Set(publicData.locations.map((location) => location.id));
+const characterIds = new Set(publicData.characters.map((character) => character.id));
+const archiveForbidden = [...forbiddenPreReveal, '肉体'];
+for (const meta of archives) {
+  if (!['location', 'person'].includes(meta.kind)) fail(`${meta.id} 的档案类型必须为 location 或 person。`);
+  if (meta.kind === 'location' && !meta.id.startsWith('arch_loc_')) fail(`${meta.id} 的地点档案 ID 必须以 arch_loc_ 开头。`);
+  if (meta.kind === 'person' && !meta.id.startsWith('arch_person_')) fail(`${meta.id} 的人事档案 ID 必须以 arch_person_ 开头。`);
+  if (meta.kind === 'location' && !locationEntityIds.has(meta.entityId)) fail(`${meta.id} 引用了不存在的设施地点。`);
+  if (meta.kind === 'person' && !characterIds.has(meta.entityId)) fail(`${meta.id} 引用了不存在的角色。`);
+  if (archiveIds.has(meta.id)) fail(`档案 ID 重复：${meta.id}`);
+  archiveIds.add(meta.id);
+  for (const term of archiveForbidden) if (`${meta.title}${meta.subtitle}${meta.description}`.includes(term)) fail(`${meta.id} 的档案文案包含揭示前禁词「${term}」。`);
+}
+const memberDocs = (meta) => publicData.documents.filter((doc) => meta.kind === 'location'
+  ? doc.location === meta.entityId
+  : doc.bodies.includes(meta.entityId) || doc.segments.some((segment) => segment.speaker === meta.entityId));
+const locationArchives = archives.filter((meta) => meta.kind === 'location');
+if (locationArchives.length !== 5) fail('地点档案必须恰有 5 本。');
+const locationMemberIds = locationArchives.flatMap((meta) => memberDocs(meta).map((doc) => doc.id));
+if (locationMemberIds.length !== 35 || new Set(locationMemberIds).size !== 35) fail('5 本地点档案必须互斥覆盖全部 35 份切片。');
+for (const meta of locationArchives) if (memberDocs(meta).length === 0) fail(`${meta.id} 没有任何成员切片。`);
+const personArchives = archives.filter((meta) => meta.kind === 'person');
+if (personArchives.length !== 7) fail('人事档案必须恰有 7 本。');
+for (const meta of personArchives) if (memberDocs(meta).length === 0) fail(`${meta.id} 没有任何成员切片。`);
 const itemPaths = Object.values(author.items).flat();
 if (!itemPaths.every((entry) => /^b[0-7]:/.test(entry))) fail('物件路径格式不连续或缺少时段。');
 const itemIds = new Set(items.map((item) => item.id));
@@ -95,4 +122,4 @@ for (const category of expectedExamEvidence) {
   }
 }
 if (new Set(expectedExamEvidence.flatMap((category) => author.examEvidence[category])).size < 3) fail('终局证据白名单并集必须至少覆盖三份档案。');
-console.log(`内容校验通过：${sceneIds.length} 个场景、${publicData.documents.length} 份玩家档案、${items.length} 件物品、${worldEntries.length} 条背景、B7 顺序固定、终局答卷九项固定、终局证据白名单三类固定。`);
+console.log(`内容校验通过：${sceneIds.length} 个场景、${publicData.documents.length} 份玩家档案、${archives.length} 本档案、${items.length} 件物品、${worldEntries.length} 条背景、B7 顺序固定、终局答卷九项固定、终局证据白名单三类固定。`);
