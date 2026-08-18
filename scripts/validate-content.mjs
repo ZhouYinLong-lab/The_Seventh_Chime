@@ -2,9 +2,12 @@ import { readFile } from 'node:fs/promises';
 
 const publicData = JSON.parse(await readFile(new URL('../src/data/public-content.json', import.meta.url), 'utf8'));
 const extendedDocuments = JSON.parse(await readFile(new URL('../src/data/extended-documents.json', import.meta.url), 'utf8'));
+const items = JSON.parse(await readFile(new URL('../src/data/items.json', import.meta.url), 'utf8'));
+const worldEntries = JSON.parse(await readFile(new URL('../src/data/world-content.json', import.meta.url), 'utf8'));
 publicData.documents = [...publicData.documents, ...extendedDocuments];
 const author = JSON.parse(await readFile(new URL('../author/baseline.json', import.meta.url), 'utf8'));
 const fail = (message) => { throw new Error(`内容校验失败：${message}`); };
+const forbiddenPreReveal = ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改'];
 const bodies = Object.keys(author.locations);
 const bellOrder = ['b0','b1','b2','b3','b4','b5','b6','b7'];
 const graph = { h:['h','r','j','a','c'], r:['r','h'], j:['j','h'], a:['a','h','c'], c:['c','h','a'] };
@@ -31,6 +34,10 @@ for (const doc of publicData.documents) {
   if (new Set(doc.bodies).size !== doc.bodies.length) fail(`${doc.id} 的查询肉体重复。`);
   if (doc.prerequisites.some((id) => !documentIds.has(id))) fail(`${doc.id} 引用了不存在的解锁前置。`);
   if (!doc.sceneId || !sceneIds.includes(doc.sceneId)) fail(`${doc.id} 未引用有效场景。`);
+  if (!Array.isArray(doc.hints) || doc.hints.length < 1) fail(`${doc.id} 缺少推进提示。`);
+  for (const hint of doc.hints) {
+    for (const term of forbiddenPreReveal) if (hint.includes(term)) fail(`${doc.id} 的推进提示在揭示前可见文本中使用了「${term}」。`);
+  }
 }
 const visit = (id, path = new Set()) => {
   if (path.has(id)) fail(`解锁图存在循环：${[...path, id].join(' → ')}`);
@@ -41,6 +48,34 @@ publicData.documents.forEach((doc) => visit(doc.id));
 if (!publicData.documents.some((doc) => doc.initial)) fail('新存档没有初始可查询档案。');
 const itemPaths = Object.values(author.items).flat();
 if (!itemPaths.every((entry) => /^b[0-7]:/.test(entry))) fail('物件路径格式不连续或缺少时段。');
+const itemIds = new Set(items.map((item) => item.id));
+if (itemIds.size !== items.length) fail('物品 ID 必须唯一。');
+const normalise = (input) => { const folded = input.normalize('NFKC').normalize('NFKD'); let output = ''; for (const char of folded) { const code = char.codePointAt(0); if (code < 0x300 || code > 0x36f) output += char; } return output.toUpperCase().replace(/[^A-Z0-9㐀-鿿]/g, ''); };
+const itemKeys = new Set();
+for (const item of items) {
+  if (!item.name || !item.description) fail(`${item.id} 缺少名称或描述。`);
+  if (!Array.isArray(item.aliases)) fail(`${item.id} 的别名必须是数组。`);
+  for (const key of [item.name, ...item.aliases]) {
+    const folded = normalise(key);
+    if (!folded) fail(`${item.id} 包含空查询键。`);
+    if (itemKeys.has(folded)) fail(`物品查询键冲突：${folded} 被多个物品使用。`);
+    itemKeys.add(folded);
+  }
+  for (const term of forbiddenPreReveal) if (`${item.name}${item.description}${item.aliases.join('')}`.includes(term)) fail(`${item.id} 在揭示前可见文本中使用了「${term}」。`);
+}
+const worldIds = new Set(worldEntries.map((entry) => entry.id));
+if (worldIds.size !== worldEntries.length) fail('背景条目 ID 必须唯一。');
+for (const entry of worldEntries) {
+  if (!entry.title || !entry.text) fail(`${entry.id} 缺少标题或正文。`);
+  for (const term of forbiddenPreReveal) if (`${entry.title}${entry.text}`.includes(term)) fail(`${entry.id} 在揭示前可见文本中使用了「${term}」。`);
+}
 const expectedTimeline = ['jump','tape_start_and_interlock','list_to_signal_room','identity_check_blocked','holster_seal_broken','shot','tape_complete'];
 if (author.b7Timeline.map(([, event]) => event).join('|') !== expectedTimeline.join('|')) fail('B7 秒级顺序被改变。');
-console.log(`内容校验通过：${sceneIds.length} 个场景、${publicData.documents.length} 份玩家档案、B7 顺序固定。`);
+const expectedAnswers = ['corpse_body','dead_soul','shooter_soul','shooter_body','believed_target_soul','escaped_soul','escaped_body','frame_modifier','anchored_body'];
+if (!Array.isArray(author.finalAnswers) || author.finalAnswers.length !== 9) fail('终局答卷必须恰有九项。');
+const answerQuestionIds = author.finalAnswers.map(([, id]) => id);
+if (answerQuestionIds.join('|') !== expectedAnswers.join('|')) fail('终局答卷的问题键被改变。');
+const counts = { verri: 0, niko: 0, kovac: 0 };
+for (const [answer] of author.finalAnswers) { if (!(answer in counts)) fail(`终局答卷答案 ${answer} 不是有效肉体。`); counts[answer] += 1; }
+if (counts.verri !== 4 || counts.niko !== 3 || counts.kovac !== 2) fail('终局答卷的答案分布与基线不符。');
+console.log(`内容校验通过：${sceneIds.length} 个场景、${publicData.documents.length} 份玩家档案、${items.length} 件物品、${worldEntries.length} 条背景、B7 顺序固定、终局答卷九项固定。`);

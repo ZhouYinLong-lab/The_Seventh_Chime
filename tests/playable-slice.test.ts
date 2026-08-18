@@ -14,7 +14,7 @@ import { chooseNewestSave, emptySave, migrateSave } from '../src/save.ts';
 test('v1 存档迁移保留笔记、标注、阅读位置与旧假设', () => {
   const migrated = migrateSave({ version: 1, discovered: ['doc_b0_r_klara'], read: ['doc_b0_r_klara'], annotations: { doc_b0_r_klara: ['s1:mechanical_fact'] }, notes: [{ id: 'n1', text: '旧笔记', refs: ['doc_b0_r_klara'] }], hypotheses: [{ body: 'klara', soul: 'verri' }], activeDoc: 'doc_b0_r_klara', query: { bell: 'b0', location: 'r_radio', bodies: ['klara'] } }, content.characters, content.documents);
   assert.ok(migrated);
-  assert.equal(migrated?.version, 3);
+  assert.equal(migrated?.version, 4);
   assert.equal(migrated?.notes[0].text, '旧笔记');
   assert.equal(migrated?.notes[0].refs[0].docId, 'doc_b0_r_klara');
   assert.equal(migrated?.annotations.doc_b0_r_klara[0], 's1:mechanical_fact');
@@ -27,9 +27,9 @@ test('v2 到 v3 迁移保留对象型段落证据引用并建立实时版框状�
   save.discovered = ['doc_b0_r_klara']; save.read = ['doc_b0_r_klara']; save.activeDoc = 'doc_b0_r_klara'; save.activeSegmentId = 's1';
   save.notes.push({ id: 'n-object', text: '段落引用', refs: [{ docId: 'doc_b0_r_klara', segmentId: 's1' }] });
   save.hypotheses.b1.klara.evidenceRefs.push({ docId: 'doc_b0_r_klara', segmentId: 's1' });
-  const v2 = JSON.parse(JSON.stringify(save)) as Record<string, unknown>; v2.version = 2; delete v2.modifiedFrameDraft; delete v2.derivedOccupancyB5B7;
+  const v2 = JSON.parse(JSON.stringify(save)) as Record<string, unknown>; v2.version = 2; delete v2.modifiedFrameDraft; delete v2.derivedOccupancyB5B7; delete v2.terminalLog;
   const reloaded = migrateSave(v2, content.characters, content.documents);
-  assert.equal(reloaded?.version, 3);
+  assert.equal(reloaded?.version, 4);
   assert.deepEqual(reloaded?.notes[0].refs, [{ docId: 'doc_b0_r_klara', segmentId: 's1' }]);
   assert.deepEqual(reloaded?.hypotheses.b1.klara.evidenceRefs, [{ docId: 'doc_b0_r_klara', segmentId: 's1' }]);
   assert.equal(reloaded?.activeSegmentId, 's1');

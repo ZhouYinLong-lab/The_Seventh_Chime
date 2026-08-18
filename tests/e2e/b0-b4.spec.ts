@@ -159,6 +159,76 @@ test('桌面端通过六槽副表提交实时版框，B5–B7 演算刷新后保
   await expect(page.locator('.live-derivation tbody tr')).toHaveCount(7);
 });
 
+const completeB7Chain = async (page: Page) => {
+  await query(page, 'b4', 'r_radio', ['klara'], '不会编码的排字工');
+  await query(page, 'b3', 'j_medical', ['livia'], '医生权限下的盗取');
+  await query(page, 'b4', 'j_medical', ['livia'], '找错地方的枪');
+  await query(page, 'b5', 'h_admin', ['kovac', 'verri'], '过度简化的结论');
+  await query(page, 'b5', 'r_radio', ['mara', 'klara'], '两种条件才能发报');
+  await query(page, 'b5', 'j_medical', ['livia'], '伪造死因');
+  await query(page, 'b6', 'r_radio', ['mara', 'klara'], '提前回归与发送带');
+  await query(page, 'b6', 'h_admin', ['mateo', 'kovac', 'verri'], '只到一半的警告');
+  await query(page, 'b6', 'j_medical', ['livia'], '尼科的警告');
+  await query(page, 'b7', 'r_radio', ['klara', 'kovac', 'verri'], '内信号间枪击');
+};
+
+const alignB7 = async (page: Page, times: Record<string, string>) => {
+  for (const [eventId, time] of Object.entries(times)) await page.locator(`select[data-b7-time="${eventId}"]`).selectOption(time);
+};
+
+const submitFinalExam = async (page: Page, answers: Record<string, string>) => {
+  for (const [questionId, character] of Object.entries(answers)) await page.locator(`select[data-exam-field="${questionId}"]`).selectOption(character);
+};
+
+test('桌面端完成 B7 秒级对齐与终局答卷，错误提交被拒，刷新后保留', async ({ page }) => {
+  await page.goto('/');
+  await completeLiveFramePrerequisites(page);
+  await submitLiveFrame(page);
+  await completeB7Chain(page);
+  await expect(page.getByRole('heading', { name: 'B7 秒级对齐' })).toBeVisible();
+  const times: Record<string, string> = {
+    jump: '23:00:00',
+    tape_start_and_interlock: '23:00:08',
+    list_to_signal_room: '23:00:26',
+    identity_check_blocked: '23:00:38',
+    holster_seal_broken: '23:00:39',
+    shot: '23:00:43',
+    tape_complete: '23:01:12',
+  };
+  await alignB7(page, times);
+  await page.locator('select[data-b7-time="shot"]').selectOption('23:00:39');
+  await page.getByRole('button', { name: '提交对齐' }).click();
+  await expect(page.getByText('这组对齐与 B7 记录冲突')).toBeVisible();
+  await page.locator('select[data-b7-time="shot"]').selectOption('23:00:43');
+  await page.getByRole('button', { name: '提交对齐' }).click();
+  await expect(page.getByText('对齐已确认：机器日志、封条与名单位置三条证据线指向同一顺序。')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '终局答卷' })).toBeVisible();
+  const answers: Record<string, string> = {
+    corpse_body: 'verri',
+    dead_soul: 'niko',
+    shooter_soul: 'kovac',
+    shooter_body: 'kovac',
+    believed_target_soul: 'verri',
+    escaped_soul: 'verri',
+    escaped_body: 'niko',
+    frame_modifier: 'verri',
+    anchored_body: 'niko',
+  };
+  await submitFinalExam(page, { ...answers, dead_soul: 'mara' });
+  await page.getByRole('button', { name: '提交答卷' }).click();
+  await expect(page.getByText('这组答卷与证据冲突。每条结论都必须由至少两处独立证据支撑；系统不会指出应替换哪一项。')).toBeVisible();
+  await submitFinalExam(page, answers);
+  await page.getByRole('button', { name: '提交答卷' }).click();
+  await expect(page.getByRole('heading', { name: '三角还原' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '终局', exact: true })).toBeVisible();
+  await expect(page.getByText('他杀死的是 Niko。')).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '三角还原' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '终局', exact: true })).toBeVisible();
+  await expect(page.locator('select[data-b7-time]')).toHaveCount(0);
+  await expect(page.locator('select[data-exam-field]')).toHaveCount(0);
+});
+
 test('390px 移动端完成实时版框闭环且页面不横向溢出', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
