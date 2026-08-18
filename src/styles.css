@@ -146,6 +146,7 @@ header p { margin: 0; }
   inset: 0;
   overflow-y: auto;
   padding: 1rem clamp(1rem, 3vw, 2.5rem) 2rem;
+  background: url('/images/facility-bg.webp') center / cover no-repeat var(--bg-deep);
 }
 .scene-map-layer .facility-map {
   height: 100%;
@@ -218,7 +219,10 @@ header p { margin: 0; }
   display: grid;
   place-items: center;
   padding: 1.5rem;
-  background: rgba(1, 6, 11, .93);
+  background:
+    linear-gradient(rgba(1, 6, 11, .84), rgba(1, 6, 11, .95)),
+    url('/images/intro-bg.webp') center / cover no-repeat,
+    var(--bg-deep);
 }
 .intro-card { max-width: min(640px, 90vw); max-height: 92vh; overflow-y: auto; }
 .intro-card h1 { margin: 0 0 1rem; }
@@ -308,6 +312,8 @@ h2 { font-size: 1.05rem; }
   min-height: 0;
   border-color: #b5a786;
   background-color: var(--paper);
+  background-image: url('/images/paper-texture.webp');
+  background-size: cover;
   background-image: linear-gradient(rgba(27, 52, 63, .025) 1px, transparent 1px), linear-gradient(90deg, rgba(27, 52, 63, .018) 1px, transparent 1px);
   background-size: 6px 6px;
   color: var(--paper-ink);
