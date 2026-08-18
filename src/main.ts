@@ -16,7 +16,7 @@ import type { ArchiveDocument, EvidenceReference, ExamCategory, SaveV5 } from '.
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('缺少应用根节点。');
 let state = loadSave(content.characters, content.documents);
-let feedback = '从四份 B0 记录开始：每一份都由时段、地点与肉体组合定位。';
+let feedback = '从四份 B0 记录开始：每一份都由时段、地点与角色组合定位。';
 let storageNotice = '';
 let terminalCursor: number | null = null;
 const saveAndRender = () => { if (persistSave(state)) storageNotice = ''; else storageNotice = '浏览器未能写入本地进度。请立即导出进度后检查存储空间或隐私设置。'; render(app, state, feedback, isB4Revealed(state.discovered), storageNotice); };
@@ -66,7 +66,7 @@ const resolveKey = (raw: string, requireDiscovered: boolean): ResolveStatus => {
 const appendTerminal = (input: string, output: string[]) => { state.terminalLog.push({ input, output, at: new Date().toISOString() }); state.terminalLog = state.terminalLog.slice(-60); };
 const openByKey = (raw: string): string[] => {
   const resolved = resolveKey(raw, false);
-  if (resolved.status === 'error') return ['档案编号无法识别。格式：时段-地点-肉体，例如 OPEN B0-H-MARA-KOVAC-VERRI。'];
+  if (resolved.status === 'error') return ['档案编号无法识别。格式：时段-地点-角色，例如 OPEN B0-H-MARA-KOVAC-VERRI。'];
   if (resolved.status === 'invalid') { countInvalid(normaliseKey(raw), false); return ['没有找到符合这些条件的主要记录。']; }
   if (resolved.status === 'locked') { countInvalid(canonicalKey(resolved.doc), true); return ['当前线索尚不足以确认这条记录。继续检查已经打开的档案。']; }
   state.query = { bell: resolved.doc.bell, location: resolved.doc.location, bodies: [...resolved.doc.bodies] };
@@ -76,7 +76,7 @@ const openByKey = (raw: string): string[] => {
 const compareByKeys = (left: string, right: string): string[] => {
   const first = resolveKey(left, true);
   const second = resolveKey(right, true);
-  if (first.status === 'error' || second.status === 'error') return ['档案编号无法识别。格式：时段-地点-肉体，例如 COMPARE B0-R-KLARA B0-C-NIKO。'];
+  if (first.status === 'error' || second.status === 'error') return ['档案编号无法识别。格式：时段-地点-角色，例如 COMPARE B0-R-KLARA B0-C-NIKO。'];
   if (first.status === 'invalid' || second.status === 'invalid') { countInvalid(normaliseKey(first.status === 'invalid' ? left : right), false); return ['没有找到符合这些条件的主要记录。']; }
   if (first.status === 'locked' || second.status === 'locked') { const failed = first.status === 'locked' ? first : second; if (failed.status === 'locked') countInvalid(canonicalKey(failed.doc), true); return ['当前线索尚不足以确认这条记录。继续检查已经打开的档案。']; }
   state.compareDocIds = [first.doc.id, second.doc.id];

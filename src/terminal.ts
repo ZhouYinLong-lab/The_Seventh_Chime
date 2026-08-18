@@ -63,7 +63,7 @@ export const terminalHelp = (): string[] => {
     'HELP — 显示本说明',
     'GOALS — 显示当前可推进的目标',
     'FILES — 列出已发现档案',
-    'OPEN <编号> — 打开档案，编号格式：时段-地点-肉体，例如 OPEN B0-H-MARA-KOVAC-VERRI',
+    'OPEN <编号> — 打开档案，编号格式：时段-地点-角色，例如 OPEN B0-H-MARA-KOVAC-VERRI',
     'COMPARE <编号> <编号> — 并排比较两份已发现档案',
     'INSPECT <物品> — 查询物品的档案记录',
     'BOARD — 显示调查状态总览',
@@ -71,6 +71,6 @@ export const terminalHelp = (): string[] => {
     'CLEAR — 清空指令日志',
     '也可直接输入档案编号，如 B0-C-NIKO。',
     `地点代号：${codes}`,
-    '档案编号对大小写、分隔符与肉体顺序不敏感。'
+    '档案编号对大小写、分隔符与角色顺序不敏感。'
   ];
 };

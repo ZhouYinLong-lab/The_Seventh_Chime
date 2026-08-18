@@ -87,7 +87,7 @@ test('B4 前 HELP 与 GOALS 不含正式推演术语', async ({ page }) => {
   await page.goto('/');
   await run(page, 'HELP');
   await run(page, 'GOALS');
-  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改']) await expect(page.locator('body')).not.toContainText(forbidden);
+  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改', '肉体']) await expect(page.locator('body')).not.toContainText(forbidden);
 });
 
 test('390px 移动端指令台可查询且页面不横向溢出', async ({ page }) => {
@@ -104,7 +104,7 @@ test('移动端世界标签展示背景志且不泄露正式推演术语', async
   await page.locator('[data-action="tab"][data-tab="world"]').click();
   await expect(page.locator('.world-panel h2')).toHaveText('1928 · 圣维拉');
   await expect(page.locator('.world-panel')).toContainText('维护井');
-  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改']) await expect(page.locator('body')).not.toContainText(forbidden);
+  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改', '肉体']) await expect(page.locator('body')).not.toContainText(forbidden);
   await page.reload();
   await expect(page.locator('[data-action="tab"][data-tab="world"]')).toHaveClass(/active/);
 });
@@ -118,7 +118,7 @@ test('HINT 在连续无效查询后逐级开放且不泄露正式推演术语', 
   const lastEntry = page.locator('.terminal-log li.terminal-entry').last();
   await expect(lastEntry).toContainText('> HINT');
   await expect(lastEntry).not.toContainText('提示尚未就绪');
-  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改']) await expect(page.locator('body')).not.toContainText(forbidden);
+  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改', '肉体']) await expect(page.locator('body')).not.toContainText(forbidden);
 });
 
 test('INSPECT 命中物品档案且不泄露正式推演术语', async ({ page }) => {
@@ -128,7 +128,7 @@ test('INSPECT 命中物品档案且不泄露正式推演术语', async ({ page }
   await expect(log(page).last()).toContainText('封条');
   await run(page, 'INSPECT 反潜鱼雷');
   await expect(log(page).last()).toContainText('没有找到该物品的档案记录');
-  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改']) await expect(page.locator('body')).not.toContainText(forbidden);
+  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改', '肉体']) await expect(page.locator('body')).not.toContainText(forbidden);
 });
 
 test('指令台完整走通 B0–B4 并开放推演面板', async ({ page }) => {

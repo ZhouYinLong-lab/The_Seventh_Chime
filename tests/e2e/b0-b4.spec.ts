@@ -124,6 +124,7 @@ test('B4 前不显示正式推演术语', async ({ page }) => {
   await expect(page.locator('body')).not.toContainText('锚点');
   await expect(page.locator('body')).not.toContainText('实时版框');
   await expect(page.locator('body')).not.toContainText('规则修改');
+  await expect(page.locator('body')).not.toContainText('肉体');
 });
 
 test('段落引用在刷新后仍保留', async ({ page }) => {

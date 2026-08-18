@@ -35,6 +35,9 @@ for (const doc of publicData.documents) {
   if (doc.prerequisites.some((id) => !documentIds.has(id))) fail(`${doc.id} 引用了不存在的解锁前置。`);
   if (!doc.sceneId || !sceneIds.includes(doc.sceneId)) fail(`${doc.id} 未引用有效场景。`);
   if (!Array.isArray(doc.hints) || doc.hints.length < 1) fail(`${doc.id} 缺少推进提示。`);
+  const revealedLater = ['b4', 'b5', 'b6', 'b7'].includes(doc.bell);
+  if (!revealedLater && `${doc.title}${doc.hints.join('')}${doc.attachments.join('')}${doc.segments.map((segment) => segment.text).join('')}`.includes('肉体')) fail(`${doc.id} 的揭示前文本（B0–B3）包含「肉体」。`);
+  if (doc.id === 'doc_b4_a_mateo' && doc.hints.some((hint) => hint.includes('肉体'))) fail('doc_b4_a_mateo 的推进提示在揭示前即可经 HINT 露出，不能包含「肉体」。');
   for (const hint of doc.hints) {
     for (const term of forbiddenPreReveal) if (hint.includes(term)) fail(`${doc.id} 的推进提示在揭示前可见文本中使用了「${term}」。`);
   }
