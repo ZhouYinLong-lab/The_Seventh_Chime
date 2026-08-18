@@ -1,7 +1,7 @@
 import { isSameOrientation } from './ring';
 import { deriveModifiedOccupancy, emptyModifiedFrameDraft, validateModifiedFrame } from './modified-frame';
-import { b7Events, b7TimeOptions, validateB7Alignment } from './b7-timeline';
-import { examDraftEmpty, examQuestions, validateExam } from './final-exam';
+import { b7Events, b7TimeOptions, makeB7AlignmentDraft, validateB7Alignment } from './b7-timeline';
+import { examQuestions, makeExamDraft, validateExam } from './final-exam';
 import type { ArchiveDocument, ArchiveFilters, B7Alignment, BellId, BodyId, Character, DerivedOccupancyB5B7, EvidenceReference, FinalExam, HintState, HypothesisCell, HypothesisGrid, ModifiedFrameDraft, ModifiedFrameSubmission, Note, PlaytestEvent, SaveV2, SaveV3, SaveV4, TerminalEntry } from './types';
 
 export const storageKey = 'btb.save.v1.current';
@@ -14,8 +14,7 @@ export const defaultFilters = (): ArchiveFilters => ({ bell: 'all', location: 'a
 const now = () => new Date().toISOString();
 export const defaultHintState = (): HintState => ({ nodeKey: 'b0-start', invalidQueries: 0, shownLevel: 0, interactionSinceHint: false, lastProgressAt: now() });
 const emptySaveV2 = (characters: Character[]): SaveV2 => ({ version: 2, discovered: [], read: [], annotations: {}, notes: [], hypotheses: createHypothesisGrid(characters.map((character) => character.id)), queryHistory: [], pinnedDocIds: [], compareDocIds: [], archiveFilters: defaultFilters(), stageSubmissions: {}, draftOriginalRing: [], hintState: defaultHintState(), playtestEvents: [], activeDoc: null, activeSegmentId: null, query: { bell: 'b0', location: 'h_admin', bodies: ['mara', 'kovac', 'verri'] }, attempts: 0, tab: 'query', updatedAt: now() });
-const emptyB7AlignmentDraft: Record<string, string> = Object.fromEntries(b7Events.map((event) => [event.id, '']));
-export const emptySave = (characters: Character[]): SaveV4 => ({ ...emptySaveV2(characters), version: 4, modifiedFrameDraft: emptyModifiedFrameDraft(), derivedOccupancyB5B7: null, terminalLog: [], b7AlignmentDraft: emptyB7AlignmentDraft, b7Alignment: null, finalExamDraft: examDraftEmpty, finalExam: null });
+export const emptySave = (characters: Character[]): SaveV4 => ({ ...emptySaveV2(characters), version: 4, modifiedFrameDraft: emptyModifiedFrameDraft(), derivedOccupancyB5B7: null, terminalLog: [], b7AlignmentDraft: makeB7AlignmentDraft(), b7Alignment: null, finalExamDraft: makeExamDraft(), finalExam: null });
 
 const array = (value: unknown): string[] => Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 const records = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -70,7 +69,7 @@ const migrateV1 = (source: Record<string, unknown>, context: SaveContext): SaveV
   return result;
 };
 const upgradeV2 = (save: SaveV2): SaveV3 => ({ ...save, version: 3, modifiedFrameDraft: emptyModifiedFrameDraft(), derivedOccupancyB5B7: null });
-const upgradeV3 = (save: SaveV3): SaveV4 => ({ ...save, version: 4, terminalLog: [], b7AlignmentDraft: emptyB7AlignmentDraft, b7Alignment: null, finalExamDraft: examDraftEmpty, finalExam: null });
+const upgradeV3 = (save: SaveV3): SaveV4 => ({ ...save, version: 4, terminalLog: [], b7AlignmentDraft: makeB7AlignmentDraft(), b7Alignment: null, finalExamDraft: makeExamDraft(), finalExam: null });
 const parseTerminalLog = (value: unknown): TerminalEntry[] | null => {
   if (!Array.isArray(value)) return null;
   const output: TerminalEntry[] = [];

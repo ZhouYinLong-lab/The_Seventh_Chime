@@ -29,7 +29,6 @@ export const examDigests: Record<string, string> = {
   anchored_body: '85c10cc014f9b661c604c129ff339fc340b906729b7060ae22674acd97907a60'
 };
 export const makeExamDraft = (): Record<string, string> => Object.fromEntries(examQuestions.map((question) => [question.id, '']));
-export const examDraftEmpty: Record<string, string> = makeExamDraft();
 export const examAvailable = (state: Pick<SaveV4, 'b7Alignment'>) => Boolean(state.b7Alignment?.correct);
 export const validateExam = (answers: Record<string, string>): boolean => examQuestions.every((question) => sha256Hex(EXAM_SALT + question.id + ':' + answers[question.id]) === examDigests[question.id]);
 const esc = (value: string) => value.replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char] ?? char);

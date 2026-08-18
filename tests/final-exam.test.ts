@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { b7Events } from '../src/b7-timeline.ts';
 import { content } from '../src/content.ts';
-import { examAvailable, examDraftEmpty, examQuestions, finalExamPanel, validateExam } from '../src/final-exam.ts';
+import { examAvailable, examQuestions, finalExamPanel, makeExamDraft, validateExam } from '../src/final-exam.ts';
 import { emptySave, migrateSave } from '../src/save.ts';
 
 const baseline = JSON.parse(readFileSync(new URL('../author/baseline.json', import.meta.url), 'utf8')) as { b7Timeline: [string, string][]; finalAnswers: [string, string][] };
@@ -22,7 +22,7 @@ test('答卷判定只接受完整且完全正确的九项', () => {
   assert.equal(validateExam(wrong), false);
   const partial = { ...canonical }; delete partial.shooter_body;
   assert.equal(validateExam(partial), false);
-  const empty = { ...examDraftEmpty };
+  const empty = makeExamDraft();
   assert.equal(validateExam(empty), false);
 });
 
@@ -82,5 +82,5 @@ test('v3 存档迁移到 v4 建立空答卷状态', () => {
   v3.version = 3; for (const key of ['terminalLog', 'b7AlignmentDraft', 'b7Alignment', 'finalExamDraft', 'finalExam']) delete v3[key];
   const migrated = migrateSave(v3, content.characters, content.documents);
   assert.equal(migrated?.finalExam, null);
-  assert.deepEqual(migrated?.finalExamDraft, examDraftEmpty);
+  assert.deepEqual(migrated?.finalExamDraft, makeExamDraft());
 });
