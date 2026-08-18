@@ -27,9 +27,14 @@ let overlayOpen = false;
 let introOpen = localStorage.getItem('btb.intro.seen') !== '1';
 const drawers = { left: true, right: true };
 let shouldPosition = false;
-const saveAndRender = () => { if (persistSave(state)) storageNotice = ''; else storageNotice = '浏览器未能写入本地进度。请立即导出进度后检查存储空间或隐私设置。'; render(app, state, feedback, isB4Revealed(state.discovered), storageNotice, { activeArchive, sealNotice, overlayOpen, drawers, introOpen }); if (introOpen) document.querySelector<HTMLElement>('.intro')?.focus(); if (shouldPosition) { shouldPosition = false; const doc = state.activeDoc ? documents.get(state.activeDoc) : undefined; if (doc) document.querySelector<HTMLElement>(`#entry-${doc.sceneId}`)?.scrollIntoView({ block: 'center' }); } };
+// 首屏可及（PM 批次一 1c）：仅首次把左栏视口定位到终端输入框顶，使完整查询表单（时段/地点/勾选/检索）无需滚动即可用。
+let initialPositioned = false;
+const positionInitialView = () => { if (initialPositioned) return; initialPositioned = true; if (introOpen) return; const left = document.querySelector<HTMLElement>('.left'); const input = document.querySelector<HTMLElement>('#terminal-input'); if (left && input) left.scrollTop = Math.round(input.getBoundingClientRect().top - left.getBoundingClientRect().top) + 20; };
+const saveAndRender = () => { if (persistSave(state)) storageNotice = ''; else storageNotice = '浏览器未能写入本地进度。请立即导出进度后检查存储空间或隐私设置。'; // 捕获滚动容器位置：innerHTML 全量重渲染会重置 scrollTop，普通重渲染后恢复；仅 shouldPosition 的有意滚动不受影响。
+  const scroll = { left: document.querySelector<HTMLElement>('.left')?.scrollTop ?? 0, right: document.querySelector<HTMLElement>('.right')?.scrollTop ?? 0 };
+  render(app, state, feedback, isB4Revealed(state.discovered), storageNotice, { activeArchive, sealNotice, overlayOpen, drawers, introOpen }); if (introOpen) document.querySelector<HTMLElement>('.intro')?.focus(); if (shouldPosition) { shouldPosition = false; const doc = state.activeDoc ? documents.get(state.activeDoc) : undefined; if (doc) document.querySelector<HTMLElement>(`#entry-${doc.sceneId}`)?.scrollIntoView({ block: 'center' }); } else { const left = document.querySelector<HTMLElement>('.left'); if (left) left.scrollTop = scroll.left; const right = document.querySelector<HTMLElement>('.right'); if (right) right.scrollTop = scroll.right; } };
 const closeFile = () => { overlayOpen = false; sealNotice = null; saveAndRender(); };
-const closeIntro = () => { introOpen = false; try { localStorage.setItem('btb.intro.seen', '1'); } catch { /* 存储失败仅影响重播 */ } saveAndRender(); };
+const closeIntro = () => { introOpen = false; try { localStorage.setItem('btb.intro.seen', '1'); } catch { /* 存储失败仅影响重播 */ } saveAndRender(); positionInitialView(); };
 const download = (name: string, value: unknown) => { const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' })); const link = Object.assign(document.createElement('a'), { href: url, download: name }); link.click(); URL.revokeObjectURL(url); };
 const markInteraction = () => { if (state.hintState.shownLevel) state.hintState.interactionSinceHint = true; };
 const resetHintsForProgress = () => { state.hintState = resetHintState(currentProgressNode(state.discovered)); };
@@ -170,7 +175,7 @@ app.addEventListener('change', (event) => {
   if (target.id === 'note-text') return;
   if (target.id === 'bell') state.query.bell = target.value as SaveV5['query']['bell'];
   else if (target.id === 'location') state.query.location = target.value;
-  else if (target instanceof HTMLInputElement && target.dataset.body) { const body = target.dataset.body; state.query.bodies = target.checked ? [...state.query.bodies, body].slice(0, 3) : state.query.bodies.filter((id) => id !== body); }
+  else if (target instanceof HTMLInputElement && target.dataset.body) { const body = target.dataset.body; if (target.checked) { if (state.query.bodies.includes(body)) { /* 幂等：已选中 */ } else if (state.query.bodies.length >= 3) { feedback = '此时段最多登记三位在场者；请先取消一位再勾选。'; } else state.query.bodies = [...state.query.bodies, body]; } else state.query.bodies = state.query.bodies.filter((id) => id !== body); }
   else if (target.dataset.filter) state.archiveFilters[target.dataset.filter as keyof SaveV5['archiveFilters']] = target.value as never;
   else if (target.dataset.hypBell && target.dataset.hypBody) { const cell = state.hypotheses[target.dataset.hypBell as keyof SaveV5['hypotheses']][target.dataset.hypBody]; cell.primaryCandidate = target.value || null; recordEvent(state, 'hypothesis_edit', { bell: target.dataset.hypBell, body: target.dataset.hypBody }); }
   else if (target instanceof HTMLInputElement && target.dataset.hypUncertain) { const [bell, body] = target.dataset.hypUncertain.split(':'); state.hypotheses[bell as keyof SaveV5['hypotheses']][body].uncertain = target.checked; recordEvent(state, 'hypothesis_edit', { bell, body, uncertain: target.checked }); }
@@ -187,6 +192,7 @@ app.addEventListener('click', (event) => {
   const action = button.dataset.action; const docId = button.dataset.doc || '';
   if (action === 'query') { executeQuery(); return saveAndRender(); }
   if (action === 'open') return openDoc(docId);
+  if (action === 'close-file') return closeFile();
   if (action === 'toggle-drawer') { const side = button.dataset.drawer; if (side === 'left' || side === 'right') drawers[side] = !drawers[side]; return saveAndRender(); }
   if (action === 'enter-intro') return closeIntro();
   if (action === 'show-intro') { introOpen = true; return saveAndRender(); }
@@ -219,3 +225,4 @@ app.addEventListener('click', (event) => {
 });
 render(app, state, feedback, isB4Revealed(state.discovered), storageNotice, { activeArchive, sealNotice, overlayOpen, drawers, introOpen });
 if (introOpen) document.querySelector<HTMLElement>('.intro')?.focus();
+positionInitialView();
