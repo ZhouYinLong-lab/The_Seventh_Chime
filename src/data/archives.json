@@ -1,0 +1,14 @@
+[
+  {"id":"arch_loc_h_admin","kind":"location","entityId":"h_admin","title":"值班台与配枪登记","subtitle":"门禁、配枪与值勤口令记录","description":"审讯／行政区的值班台档案：门禁登记、配枪封条与值勤口令。"},
+  {"id":"arch_loc_r_radio","kind":"location","entityId":"r_radio","title":"电讯区 收发记录","subtitle":"无线电收发与线路调整记录","description":"电讯区的收发档案：机器纸带、呼叫记录与线路调整。"},
+  {"id":"arch_loc_j_medical","kind":"location","entityId":"j_medical","title":"拘留／医疗区 值班日志","subtitle":"体检、遗物与诊疗记录","description":"拘留／医疗区的值班日志：体检表、遗物登记与诊疗记录。"},
+  {"id":"arch_loc_a_archive","kind":"location","entityId":"a_archive","title":"档案区 调阅记录","subtitle":"调阅签、排字柜与旧案文件","description":"档案区的调阅记录：调阅签、排字柜暗槽与旧案文件。"},
+  {"id":"arch_loc_c_bell","kind":"location","entityId":"c_bell","title":"钟楼 维护记录","subtitle":"检修簿、冲击纸与版框记录","description":"礼拜堂／钟楼的维护记录：检修簿、冲击纸与版框传动。"},
+  {"id":"arch_person_mara","kind":"person","entityId":"mara","title":"《玛拉·武科维奇 人事卷宗》","subtitle":"法庭译员 · 谨慎，熟悉法律措辞","description":"玛拉·武科维奇出现在各时段的记录：译稿、复述与档案区活动。"},
+  {"id":"arch_person_klara","kind":"person","entityId":"klara","title":"《克拉拉·魏斯 人事卷宗》","subtitle":"无线电报务员 · 短句、快速、左手补偿","description":"克拉拉·魏斯出现在各时段的记录：发报、呼叫与电讯区值守。"},
+  {"id":"arch_person_livia","kind":"person","entityId":"livia","title":"《莉维娅·莫雷蒂 人事卷宗》","subtitle":"检疫医生 · 诊断程序严谨","description":"莉维娅·莫雷蒂出现在各时段的记录：体检、诊疗与医疗区活动。"},
+  {"id":"arch_person_niko","kind":"person","entityId":"niko","title":"《尼科·彼得罗维奇 人事卷宗》","subtitle":"钟楼学徒 · 年轻、瘦小、熟悉维护井","description":"尼科·彼得罗维奇出现在各时段的记录：检修、包扎与钟楼维护。"},
+  {"id":"arch_person_mateo","kind":"person","entityId":"mateo","title":"《马特奥·里乌斯 人事卷宗》","subtitle":"排字工／被拘押者 · 双手有排字灼痕","description":"马特奥·里乌斯出现在各时段的记录：拘押、排字与证词。"},
+  {"id":"arch_person_kovac","kind":"person","entityId":"kovac","title":"《伊利亚·科瓦奇 人事卷宗》","subtitle":"港警队长 · 持枪、熟悉门禁程序","description":"伊利亚·科瓦奇出现在各时段的记录：门禁、配枪与搜查。"},
+  {"id":"arch_person_verri","kind":"person","entityId":"verri","title":"《奥古斯托·维里 人事卷宗》","subtitle":"海关专员 · 年长，呼吸状况不稳","description":"奥古斯托·维里出现在各时段的记录：行政命令签发前后、钥匙保管与海关事务。"}
+]

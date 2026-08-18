@@ -1,5 +1,6 @@
 import './styles.css';
-import { validateB7Alignment } from './b7-timeline';
+import { b7Events, validateB7Alignment } from './b7-timeline';
+import { EXAM_CATEGORIES, validateExamEvidence } from './exam-evidence';
 import { examQuestions, validateExam } from './final-exam';
 import { content, documents, isB4Revealed } from './content';
 import { currentProgressNode, hintAvailable, hintFor, resetHintState } from './hints';
@@ -7,24 +8,29 @@ import { findItem } from './items';
 import { findByQuery, isReady, queryKey } from './query';
 import { isSameOrientation } from './ring';
 import { deriveModifiedOccupancy, liveFrameAvailable, validateModifiedFrame } from './modified-frame';
-import { loadSave, migrateSave, persistSave, recordEvent, storageKey, backupKey, emptySave } from './save';
+import { endgamePrerequisites, loadSave, migrateSave, persistSave, recordEvent, storageKey, backupKey, emptySave } from './save';
+import { archiveById, parentArchive } from './archives';
 import { render } from './render';
 import { canonicalKey, completionFor, discoveredKeys, normaliseKey, parseSceneKey, terminalHelp } from './terminal';
-import type { ArchiveDocument, SaveV4 } from './types';
+import type { ArchiveDocument, EvidenceReference, ExamCategory, SaveV5 } from './types';
 
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('缺少应用根节点。');
 let state = loadSave(content.characters, content.documents);
-let feedback = '从四份 B0 记录开始：每一份都由时段、地点与肉体组合定位。';
+let feedback = '从四份 B0 记录开始：每一份都由时段、地点与角色组合定位。';
 let storageNotice = '';
 let terminalCursor: number | null = null;
-const saveAndRender = () => { if (persistSave(state)) storageNotice = ''; else storageNotice = '浏览器未能写入本地进度。请立即导出进度后检查存储空间或隐私设置。'; render(app, state, feedback, isB4Revealed(state.discovered), storageNotice); };
+// 档案层瞬态：当前打开的整本档案、封条反馈与定位标记。不进存档，刷新后由 activeDoc 派生回落。
+let activeArchive: string | null = null;
+let sealNotice: string | null = null;
+let shouldPosition = false;
+const saveAndRender = () => { if (persistSave(state)) storageNotice = ''; else storageNotice = '浏览器未能写入本地进度。请立即导出进度后检查存储空间或隐私设置。'; render(app, state, feedback, isB4Revealed(state.discovered), storageNotice, { activeArchive, sealNotice }); if (shouldPosition) { shouldPosition = false; const doc = state.activeDoc ? documents.get(state.activeDoc) : undefined; if (doc) document.querySelector<HTMLElement>(`#entry-${doc.sceneId}`)?.scrollIntoView({ block: 'center' }); } };
 const download = (name: string, value: unknown) => { const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' })); const link = Object.assign(document.createElement('a'), { href: url, download: name }); link.click(); URL.revokeObjectURL(url); };
 const markInteraction = () => { if (state.hintState.shownLevel) state.hintState.interactionSinceHint = true; };
 const resetHintsForProgress = () => { state.hintState = resetHintState(currentProgressNode(state.discovered)); };
 const maybeRevealLiveFrame = () => { if (liveFrameAvailable(state) && !state.playtestEvents.some((event) => event.kind === 'modified_frame_reveal')) recordEvent(state, 'modified_frame_reveal'); };
-const openDoc = (id: string) => { const doc = documents.get(id); if (!doc) return; const wasRead = state.read.includes(id); state.activeDoc = id; state.activeSegmentId = null; markInteraction(); if (!wasRead) state.read.push(id); else recordEvent(state, 'revisit', { docId: id }); saveAndRender(); setTimeout(() => document.querySelector<HTMLElement>('#reader')?.focus(), 0); };
-const discover = (id: string) => { const doc = documents.get(id); if (!doc) return; if (!state.discovered.includes(id)) { state.discovered.push(id); recordEvent(state, 'unlock', { docId: id, bell: doc.bell }); resetHintsForProgress(); if (id === 'doc_b4_a_mateo') { recordEvent(state, 'b4_reveal'); feedback = '原始校样已归档。旧记录的异常标签现在可以按新证据重新阅读。'; } } state.activeDoc = id; state.activeSegmentId = null; if (!state.read.includes(id)) state.read.push(id); maybeRevealLiveFrame(); };
+const openDoc = (id: string) => { const doc = documents.get(id); if (!doc) return; const wasRead = state.read.includes(id); state.activeDoc = id; state.activeSegmentId = null; markInteraction(); if (!wasRead) state.read.push(id); else recordEvent(state, 'revisit', { docId: id }); const parent = parentArchive(doc); activeArchive = parent?.id ?? null; shouldPosition = true; saveAndRender(); setTimeout(() => document.querySelector<HTMLElement>('#reader')?.focus(), 0); };
+const discover = (id: string) => { const doc = documents.get(id); if (!doc) return; if (!state.discovered.includes(id)) { state.discovered.push(id); recordEvent(state, 'unlock', { docId: id, bell: doc.bell }); resetHintsForProgress(); if (id === 'doc_b4_a_mateo') { recordEvent(state, 'b4_reveal'); feedback = '原始校样已归档。旧记录的异常标签现在可以按新证据重新阅读。'; } } state.activeDoc = id; state.activeSegmentId = null; if (!state.read.includes(id)) state.read.push(id); maybeRevealLiveFrame(); const parent = parentArchive(doc); activeArchive = parent?.id ?? null; shouldPosition = true; };
 type QueryResult = 'found' | 'locked' | 'invalid';
 const countInvalid = (key: string, locked: boolean) => {
   state.attempts += 1;
@@ -51,7 +57,7 @@ const executeQuery = (): QueryResult => {
   return doc ? 'locked' : 'invalid';
 };
 const toggleCompare = (id: string) => { state.compareDocIds = state.compareDocIds.includes(id) ? state.compareDocIds.filter((item) => item !== id) : [...state.compareDocIds.slice(-1), id]; recordEvent(state, 'compare', { docId: id, selected: state.compareDocIds.includes(id) }); saveAndRender(); };
-const importSave = (file: File) => file.text().then((text) => { try { const parsed = JSON.parse(text) as { save?: unknown }; const imported = migrateSave(parsed.save ?? parsed, content.characters, content.documents); if (!imported) throw new Error('bad save'); state = imported; feedback = '进度已导入；旧版存档已安全迁移到当前结构。'; saveAndRender(); } catch { feedback = '导入失败：文件包含损坏或不存在的档案、推演或引用，现有进度未被覆盖。'; render(app, state, feedback, isB4Revealed(state.discovered), storageNotice); } });
+const importSave = (file: File) => file.text().then((text) => { try { const parsed = JSON.parse(text) as { save?: unknown }; const imported = migrateSave(parsed.save ?? parsed, content.characters, content.documents); if (!imported) throw new Error('bad save'); state = imported; feedback = '进度已导入；旧版存档已安全迁移到当前结构。'; saveAndRender(); } catch { feedback = '导入失败：文件包含损坏或不存在的档案、推演或引用，现有进度未被覆盖。'; render(app, state, feedback, isB4Revealed(state.discovered), storageNotice, { activeArchive, sealNotice }); } });
 
 type ResolveStatus = { status: 'ok'; doc: ArchiveDocument } | { status: 'error' } | { status: 'locked'; doc: ArchiveDocument } | { status: 'invalid' };
 const resolveKey = (raw: string, requireDiscovered: boolean): ResolveStatus => {
@@ -65,7 +71,7 @@ const resolveKey = (raw: string, requireDiscovered: boolean): ResolveStatus => {
 const appendTerminal = (input: string, output: string[]) => { state.terminalLog.push({ input, output, at: new Date().toISOString() }); state.terminalLog = state.terminalLog.slice(-60); };
 const openByKey = (raw: string): string[] => {
   const resolved = resolveKey(raw, false);
-  if (resolved.status === 'error') return ['档案编号无法识别。格式：时段-地点-肉体，例如 OPEN B0-H-MARA-KOVAC-VERRI。'];
+  if (resolved.status === 'error') return ['档案编号无法识别。格式：时段-地点-角色，例如 OPEN B0-H-MARA-KOVAC-VERRI。'];
   if (resolved.status === 'invalid') { countInvalid(normaliseKey(raw), false); return ['没有找到符合这些条件的主要记录。']; }
   if (resolved.status === 'locked') { countInvalid(canonicalKey(resolved.doc), true); return ['当前线索尚不足以确认这条记录。继续检查已经打开的档案。']; }
   state.query = { bell: resolved.doc.bell, location: resolved.doc.location, bodies: [...resolved.doc.bodies] };
@@ -75,7 +81,7 @@ const openByKey = (raw: string): string[] => {
 const compareByKeys = (left: string, right: string): string[] => {
   const first = resolveKey(left, true);
   const second = resolveKey(right, true);
-  if (first.status === 'error' || second.status === 'error') return ['档案编号无法识别。格式：时段-地点-肉体，例如 COMPARE B0-R-KLARA B0-C-NIKO。'];
+  if (first.status === 'error' || second.status === 'error') return ['档案编号无法识别。格式：时段-地点-角色，例如 COMPARE B0-R-KLARA B0-C-NIKO。'];
   if (first.status === 'invalid' || second.status === 'invalid') { countInvalid(normaliseKey(first.status === 'invalid' ? left : right), false); return ['没有找到符合这些条件的主要记录。']; }
   if (first.status === 'locked' || second.status === 'locked') { const failed = first.status === 'locked' ? first : second; if (failed.status === 'locked') countInvalid(canonicalKey(failed.doc), true); return ['当前线索尚不足以确认这条记录。继续检查已经打开的档案。']; }
   state.compareDocIds = [first.doc.id, second.doc.id];
@@ -155,17 +161,17 @@ app.addEventListener('change', (event) => {
   const target = event.target as HTMLInputElement | HTMLSelectElement;
   markInteraction();
   if (target.id === 'note-text') return;
-  if (target.id === 'bell') state.query.bell = target.value as SaveV4['query']['bell'];
+  if (target.id === 'bell') state.query.bell = target.value as SaveV5['query']['bell'];
   else if (target.id === 'location') state.query.location = target.value;
   else if (target instanceof HTMLInputElement && target.dataset.body) { const body = target.dataset.body; state.query.bodies = target.checked ? [...state.query.bodies, body].slice(0, 3) : state.query.bodies.filter((id) => id !== body); }
-  else if (target.dataset.filter) state.archiveFilters[target.dataset.filter as keyof SaveV4['archiveFilters']] = target.value as never;
-  else if (target.dataset.hypBell && target.dataset.hypBody) { const cell = state.hypotheses[target.dataset.hypBell as keyof SaveV4['hypotheses']][target.dataset.hypBody]; cell.primaryCandidate = target.value || null; recordEvent(state, 'hypothesis_edit', { bell: target.dataset.hypBell, body: target.dataset.hypBody }); }
-  else if (target instanceof HTMLInputElement && target.dataset.hypUncertain) { const [bell, body] = target.dataset.hypUncertain.split(':'); state.hypotheses[bell as keyof SaveV4['hypotheses']][body].uncertain = target.checked; recordEvent(state, 'hypothesis_edit', { bell, body, uncertain: target.checked }); }
+  else if (target.dataset.filter) state.archiveFilters[target.dataset.filter as keyof SaveV5['archiveFilters']] = target.value as never;
+  else if (target.dataset.hypBell && target.dataset.hypBody) { const cell = state.hypotheses[target.dataset.hypBell as keyof SaveV5['hypotheses']][target.dataset.hypBody]; cell.primaryCandidate = target.value || null; recordEvent(state, 'hypothesis_edit', { bell: target.dataset.hypBell, body: target.dataset.hypBody }); }
+  else if (target instanceof HTMLInputElement && target.dataset.hypUncertain) { const [bell, body] = target.dataset.hypUncertain.split(':'); state.hypotheses[bell as keyof SaveV5['hypotheses']][body].uncertain = target.checked; recordEvent(state, 'hypothesis_edit', { bell, body, uncertain: target.checked }); }
   else if (target.dataset.ringIndex) state.draftOriginalRing[Number(target.dataset.ringIndex)] = target.value;
   else if (target.dataset.modifiedField) { const field = target.dataset.modifiedField as keyof Pick<typeof state.modifiedFrameDraft, 'changedAfterBell' | 'modifierSoul' | 'removedName' | 'anchorBody'>; state.modifiedFrameDraft[field] = (target.value || null) as never; state.modifiedFrameSubmission = undefined; state.derivedOccupancyB5B7 = null; recordEvent(state, 'modified_frame_edit', { field }); }
   else if (target.dataset.liveRingIndex) { state.modifiedFrameDraft.sixBodyRing[Number(target.dataset.liveRingIndex)] = target.value; state.modifiedFrameSubmission = undefined; state.derivedOccupancyB5B7 = null; recordEvent(state, 'modified_frame_edit', { field: 'sixBodyRing' }); }
-  else if (target.dataset.b7Time) { state.b7AlignmentDraft[target.dataset.b7Time] = target.value; }
-  else if (target.dataset.examField) { state.finalExamDraft[target.dataset.examField] = target.value; }
+  else if (target.dataset.b7Index) { const event = b7Events[Number(target.dataset.b7Index)]; if (event) state.b7AlignmentDraft[event.id] = target.value; }
+  else if (target.dataset.examIndex) { const question = examQuestions[Number(target.dataset.examIndex)]; if (question) state.finalExamDraft[question.id] = target.value; }
   else if (target instanceof HTMLInputElement && target.id === 'import-file' && target.files?.[0]) { importSave(target.files[0]); return; }
   saveAndRender();
 });
@@ -174,6 +180,8 @@ app.addEventListener('click', (event) => {
   const action = button.dataset.action; const docId = button.dataset.doc || '';
   if (action === 'query') { executeQuery(); return saveAndRender(); }
   if (action === 'open') return openDoc(docId);
+  if (action === 'open-archive') { const archiveId = button.dataset.archive || ''; if (archiveById.has(archiveId)) { activeArchive = archiveId; state.activeDoc = null; state.activeSegmentId = null; sealNotice = null; shouldPosition = false; state.tab = 'archive'; } return saveAndRender(); }
+  if (action === 'seal-hit') { sealNotice = '该条记录仍被封存：线索不足。'; feedback = '该条记录仍被封存：线索不足。'; return saveAndRender(); }
   if (action === 'pin-doc') { state.pinnedDocIds = state.pinnedDocIds.includes(docId) ? state.pinnedDocIds.filter((id) => id !== docId) : [...state.pinnedDocIds, docId]; return saveAndRender(); }
   if (action === 'compare-doc') return toggleCompare(docId);
   markInteraction();
@@ -183,18 +191,20 @@ app.addEventListener('click', (event) => {
   if (action === 'add-note') { const input = document.querySelector<HTMLTextAreaElement>('#note-text'); if (input?.value.trim()) state.notes.push({ id: crypto.randomUUID(), text: input.value.trim(), refs: state.activeDoc ? [{ docId: state.activeDoc, ...(state.activeSegmentId ? { segmentId: state.activeSegmentId } : {}) }] : [] }); return saveAndRender(); }
   if (action === 'delete-note') { state.notes.splice(Number(button.dataset.index), 1); return saveAndRender(); }
   if (action === 'hint') { hintAction(); return saveAndRender(); }
-  if (action === 'use-current-evidence') { const bell = button.dataset.hypBell as keyof SaveV4['hypotheses']; const body = button.dataset.hypBody!; if (state.activeDoc && state.activeSegmentId) { const cell = state.hypotheses[bell][body]; const ref = { docId: state.activeDoc, segmentId: state.activeSegmentId }; if (!cell.evidenceRefs.some((item) => item.docId === ref.docId && item.segmentId === ref.segmentId)) cell.evidenceRefs.push(ref); recordEvent(state, 'hypothesis_edit', { bell, body, evidence: state.activeDoc, segment: state.activeSegmentId }); } else feedback = '先在档案阅读器中选中一个具体段落，再把它放入假设格。'; return saveAndRender(); }
+  if (action === 'use-current-evidence') { const bell = button.dataset.hypBell as keyof SaveV5['hypotheses']; const body = button.dataset.hypBody!; if (state.activeDoc && state.activeSegmentId) { const cell = state.hypotheses[bell][body]; const ref = { docId: state.activeDoc, segmentId: state.activeSegmentId }; if (!cell.evidenceRefs.some((item) => item.docId === ref.docId && item.segmentId === ref.segmentId)) cell.evidenceRefs.push(ref); recordEvent(state, 'hypothesis_edit', { bell, body, evidence: state.activeDoc, segment: state.activeSegmentId }); } else feedback = '先在档案阅读器中选中一个具体段落，再把它放入假设格。'; return saveAndRender(); }
   if (action === 'submit-ring') { const candidate = state.draftOriginalRing; const complete = candidate.length === 7 && candidate.every(Boolean) && new Set(candidate).size === 7; const correct = complete && isSameOrientation(candidate); recordEvent(state, 'ring_submit', { complete, correct }); if (correct) { state.stageSubmissions.originalRing = { ring: [...candidate], submittedAt: new Date().toISOString(), correct: true }; maybeRevealLiveFrame(); feedback = '提交已保存。下表只按你提交的规则演算，仍由你决定如何解释证据。'; } else feedback = complete ? '这组方向与已读原件冲突。回看校样与早期记录；系统不会指出应替换哪一人。' : '请先填入七个互不重复的名字，再提交。'; return saveAndRender(); }
   if (action === 'add-modified-evidence') { if (state.activeDoc && state.activeSegmentId) { const ref = { docId: state.activeDoc, segmentId: state.activeSegmentId }; if (!state.modifiedFrameDraft.evidenceRefs.some((item) => item.docId === ref.docId && item.segmentId === ref.segmentId)) state.modifiedFrameDraft.evidenceRefs.push(ref); state.modifiedFrameSubmission = undefined; state.derivedOccupancyB5B7 = null; recordEvent(state, 'modified_frame_edit', { field: 'evidence', docId: ref.docId, segmentId: ref.segmentId }); } else feedback = '先在档案阅读器中选中一段可检验的记录，再加入实时版框证据。'; return saveAndRender(); }
   if (action === 'remove-modified-evidence') { state.modifiedFrameDraft.evidenceRefs.splice(Number(button.dataset.evidenceIndex), 1); state.modifiedFrameSubmission = undefined; state.derivedOccupancyB5B7 = null; recordEvent(state, 'modified_frame_edit', { field: 'evidence' }); return saveAndRender(); }
-  if (action === 'open-modified-evidence') { const ref = button.dataset.evidenceIndex ? state.modifiedFrameDraft.evidenceRefs[Number(button.dataset.evidenceIndex)] : state.modifiedFrameSubmission?.evidenceRefs[0]; if (ref) { state.activeDoc = ref.docId; state.activeSegmentId = ref.segmentId ?? null; state.tab = 'archive'; } return saveAndRender(); }
+  if (action === 'open-modified-evidence') { const docId = button.dataset.evidenceDoc; const draftRefs = state.modifiedFrameDraft.evidenceRefs; const submissionRefs = state.modifiedFrameSubmission?.evidenceRefs ?? []; const ref = (docId && draftRefs.find((item) => item.docId === docId)) || (docId && submissionRefs.find((item) => item.docId === docId)) || (button.dataset.evidenceIndex ? draftRefs[Number(button.dataset.evidenceIndex)] : submissionRefs[0]); if (ref) { state.activeDoc = ref.docId; state.activeSegmentId = ref.segmentId ?? null; state.tab = 'archive'; const doc = documents.get(ref.docId); if (doc) { const parent = parentArchive(doc); activeArchive = parent?.id ?? null; } shouldPosition = true; } return saveAndRender(); }
+  if (action === 'add-exam-evidence') { const category = button.dataset.category as ExamCategory | undefined; if (category && EXAM_CATEGORIES.includes(category)) { if (state.activeDoc && state.activeSegmentId) { state.finalExamEvidenceDraft[category] = { docId: state.activeDoc, segmentId: state.activeSegmentId }; recordEvent(state, 'final_exam_evidence_edit', { category, docId: state.activeDoc, segment: state.activeSegmentId }); } else feedback = '先在档案阅读器中选中一段已发现档案里的具体段落，再把它放入答卷证据。'; } return saveAndRender(); }
+  if (action === 'remove-exam-evidence') { const category = button.dataset.category as ExamCategory | undefined; if (category && EXAM_CATEGORIES.includes(category)) { state.finalExamEvidenceDraft[category] = null; recordEvent(state, 'final_exam_evidence_edit', { category, removed: true }); } return saveAndRender(); }
   if (action === 'submit-modified-frame') { const result = validateModifiedFrame(state.modifiedFrameDraft); recordEvent(state, 'modified_frame_submit', { correct: result.correct, failures: result.failures.join(',') || 'none' }); if (result.correct && state.stageSubmissions.originalRing) { state.modifiedFrameSubmission = { ...state.modifiedFrameDraft, sixBodyRing: [...state.modifiedFrameDraft.sixBodyRing], evidenceRefs: [...state.modifiedFrameDraft.evidenceRefs], correct: true, submittedAt: new Date().toISOString() }; state.derivedOccupancyB5B7 = deriveModifiedOccupancy(state.stageSubmissions.originalRing.ring, state.modifiedFrameSubmission); feedback = '实时版框已提交。下表只按你提交的规则演算，并不判断任何终局责任。'; } else { const labels: Record<string, string> = { timing: '改版时段', roles: '人物／锚定关系', ring: '六槽方向或成员', evidence: '证据数量或来源' }; feedback = `提交尚未通过：请复核${result.failures.map((item) => labels[item]).join('、')}。`; } return saveAndRender(); }
-  if (action === 'submit-b7-alignment') { const candidate = { ...state.b7AlignmentDraft }; const complete = Object.values(candidate).every(Boolean); const correct = complete && validateB7Alignment(candidate); recordEvent(state, 'b7_alignment_submit', { complete, correct }); if (correct) { state.b7Alignment = { assigned: candidate, submittedAt: new Date().toISOString(), correct: true }; feedback = '对齐已确认：机器日志、封条与名单位置指向同一顺序。'; } else feedback = complete ? '这组对齐与 B7 记录冲突。回读内信号间档案的秒级对齐表；系统不会指出应替换哪一行。' : '请先把七个事件全部对齐到时刻，再提交。'; return saveAndRender(); }
-  if (action === 'submit-final-exam') { const candidate = { ...state.finalExamDraft }; const complete = examQuestions.every((question) => Boolean(candidate[question.id])); const correct = complete && validateExam(candidate); recordEvent(state, 'final_exam_submit', { complete, correct }); if (correct) { state.finalExam = { answers: candidate, submittedAt: new Date().toISOString(), correct: true }; feedback = '终局答卷已确认：九项结论全部由两条以上相互独立的证据支撑。'; } else feedback = complete ? '这组答卷与证据冲突。每条结论都必须由至少两处独立证据支撑；系统不会指出应替换哪一项。' : '请先回答全部九项，再提交答卷。'; return saveAndRender(); }
-  if (action === 'select-bell') { state.query.bell = button.dataset.bell as SaveV4['query']['bell']; state.tab = 'query'; feedback = `已切换至 ${button.dataset.bell?.toUpperCase()}。`; return saveAndRender(); }
-  if (action === 'tab') { state.tab = button.dataset.tab as SaveV4['tab']; return saveAndRender(); }
+  if (action === 'submit-b7-alignment') { if (!endgamePrerequisites(state)) { feedback = '请先提交原始圆环与实时版框，再对齐 B7。'; return saveAndRender(); } const candidate = { ...state.b7AlignmentDraft }; const complete = Object.values(candidate).every(Boolean); const correct = complete && validateB7Alignment(candidate); recordEvent(state, 'b7_alignment_submit', { complete, correct }); if (correct) { state.b7Alignment = { assigned: candidate, submittedAt: new Date().toISOString(), correct: true }; feedback = '对齐已确认：机器日志、封条与名单位置指向同一顺序。'; } else feedback = complete ? '这组对齐与 B7 记录冲突。回读内信号间档案的秒级对齐表；系统不会指出应替换哪一行。' : '请先把七个事件全部对齐到时刻，再提交。'; return saveAndRender(); }
+  if (action === 'submit-final-exam') { const candidate = { ...state.finalExamDraft }; const complete = examQuestions.every((question) => Boolean(candidate[question.id])); const evidenceReady = validateExamEvidence(state.finalExamEvidenceDraft, state.discovered); const correct = complete && evidenceReady && validateExam(candidate); recordEvent(state, 'final_exam_submit', { complete, correct, evidence: evidenceReady }); if (correct) { const confirmedEvidence = {} as Record<ExamCategory, EvidenceReference>; for (const category of EXAM_CATEGORIES) confirmedEvidence[category] = state.finalExamEvidenceDraft[category]!; state.finalExam = { answers: candidate, evidence: confirmedEvidence, submittedAt: new Date().toISOString(), correct: true }; feedback = '答卷已确认。九项结论由身体／地点、灵魂指认与因果连续三类证据共同支撑。'; } else feedback = complete && evidenceReady ? '这组答卷与证据冲突。九项结论需要身体／地点、灵魂指认与因果连续三类证据共同支撑，且证据须来自至少两份不同档案；系统不会指出应替换哪一项。' : '请先回答全部九项，并为身体／地点、灵魂指认、因果连续三个类别各引用一段来自已发现档案的证据（至少来自两份档案），再提交答卷。'; return saveAndRender(); }
+  if (action === 'select-bell') { state.query.bell = button.dataset.bell as SaveV5['query']['bell']; state.tab = 'query'; feedback = `已切换至 ${button.dataset.bell?.toUpperCase()}。`; return saveAndRender(); }
+  if (action === 'tab') { state.tab = button.dataset.tab as SaveV5['tab']; return saveAndRender(); }
   if (action === 'export') return download(`seventh-chime-save-${new Date().toISOString().slice(0, 10)}.json`, { format: 'seventh-chime-save', save: state });
   if (action === 'export-events') return download(`seventh-chime-playtest-${new Date().toISOString().slice(0, 10)}.json`, { format: 'seventh-chime-playtest-events', events: state.playtestEvents });
   if (action === 'reset' && confirm('重置本机的《黑潮钟》进度？建议先导出。')) { state = emptySave(content.characters); try { localStorage.removeItem(storageKey); localStorage.removeItem(backupKey); } catch { storageNotice = '浏览器未能清除旧进度；请导出后检查本地存储设置。'; } feedback = '进度已重置。'; return saveAndRender(); }
 });
-render(app, state, feedback, isB4Revealed(state.discovered), storageNotice);
+render(app, state, feedback, isB4Revealed(state.discovered), storageNotice, { activeArchive, sealNotice });

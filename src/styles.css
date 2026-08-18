@@ -354,6 +354,8 @@ th:first-child { position: sticky; left: 0; background: var(--bg-secondary); tex
   .workspace > aside, .workspace > section { display: none; }
   .workspace > .mobile-visible { display: grid; margin-bottom: .8rem; }
   .left.mobile-visible, .right.mobile-visible { gap: .8rem; }
+  .right > * { display: none; min-width: 0; max-width: 100%; }
+  .right > .mobile-visible { display: block; }
   .reader { min-height: 0; }
   .metadata { grid-template-columns: 1fr; }
   .archive-heading { flex-direction: column; }
@@ -364,6 +366,47 @@ th:first-child { position: sticky; left: 0; background: var(--bg-secondary); tex
   .body-options { grid-template-columns: 1fr; }
   .archive-filters { grid-template-columns: 1fr; }
   .compare-reader { grid-template-columns: 1fr; }
+}
+
+/* 整本档案阅读器与封条（M2） */
+.book-badge { display: inline-block; align-self: center; padding: .25rem .6rem; border: 1px solid #9c8d6c; color: #74613d; font-size: .78rem; white-space: nowrap; }
+.book-description { margin: 0 0 1rem; color: #50636a; font-size: .9rem; }
+.book .entry { display: grid; gap: .6rem; min-width: 0; max-width: 100%; padding: 1rem; border: 1px solid #a99d82; background: rgba(255, 253, 244, .44); }
+.book .entry.current { border-color: #376f6b; box-shadow: inset 0 0 0 1px rgba(98, 184, 160, .35); }
+.book .entry .archive-heading { margin-bottom: .6rem; padding-bottom: .5rem; border-bottom: 1px dashed #b9ad93; }
+.book .entry h3 { margin: 0; color: #132c3b; font-family: Songti SC, STSong, SimSun, serif; font-size: 1.25rem; }
+.book .entry.seal { justify-items: start; border-style: dashed; border-color: #9c8d6c; background: repeating-linear-gradient(135deg, rgba(198, 155, 77, .07) 0 8px, transparent 8px 16px); }
+.book .entry.seal .seal-line { margin: 0; color: #74613d; font-size: .85rem; }
+.seal-feedback { margin: 1rem 0 0; padding: .5rem .7rem; border-left: 3px solid var(--accent-primary); color: var(--text-secondary); font-size: .9rem; }
+
+/* 设施地图、检索台折叠与档案库（M3） */
+.facility-map .rooms { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem; margin: .6rem 0 .8rem; }
+.room-card { display: grid; gap: .2rem; justify-items: start; min-width: 0; padding: .6rem; border: 1px solid var(--border); background: #0a1b2a; text-align: left; }
+.room-card .room-code { color: var(--accent-primary); font-family: var(--mono); font-size: .8rem; }
+.room-card strong { color: var(--text-primary); }
+.room-card small, .room-card .room-progress, .room-card .room-bell { color: var(--text-secondary); font-size: .72rem; }
+.room-card.sealed { border-style: dashed; opacity: .85; }
+.room-card.partial { border-color: var(--accent-primary); }
+.room-card.complete { border-color: var(--accent-primary); background: #133247; }
+.facility-map .roster { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.roster-card { display: grid; gap: .15rem; justify-items: start; min-width: 0; padding: .5rem .6rem; border: 1px solid var(--border); background: #0a1b2a; text-align: left; }
+.roster-card small, .roster-card .roster-progress { color: var(--text-secondary); font-size: .72rem; }
+.query-fold { border: 1px solid var(--border); background: #0a1b2a; }
+.query-fold summary { cursor: pointer; padding: .55rem .7rem; color: var(--accent-primary); font-weight: 700; font-size: .85rem; }
+.query-fold .query-panel { border: 0; border-top: 1px solid var(--border); background: transparent; }
+.archive-group h3 { margin: 1rem 0 .4rem; color: var(--text-secondary); font-size: .78rem; }
+.archive-item { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+.archive-item > button { display: grid; gap: .15rem; min-height: 0; padding: .5rem .6rem; border: 0; background: transparent; box-shadow: none; text-align: left; }
+.archive-item .archive-progress { padding: 0 .45rem; color: var(--text-secondary); font-size: .72rem; white-space: nowrap; }
+/* 书卷双风：地点记录=机器记录风，人事卷宗=卷宗风 */
+.book.kind-location .book-badge { border-color: #2e5f5c; color: #2e5f5c; }
+.book.kind-location .segments .segment.machine { border-left: 2px solid #2e5f5c; background: rgba(46, 95, 92, .05); font-family: var(--mono); }
+.book.kind-personnel .book-badge { border-color: #7a2e2e; color: #7a2e2e; }
+.book.kind-personnel .segments .segment.dialogue { border-left: 2px solid #7a2e2e; background: rgba(122, 46, 46, .04); }
+
+@media (max-width: 720px) {
+  .facility-map .rooms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .facility-map .roster { grid-template-columns: 1fr; }
 }
 
 @media (prefers-reduced-motion: reduce) {

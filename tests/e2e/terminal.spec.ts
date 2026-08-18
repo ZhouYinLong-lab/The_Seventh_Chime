@@ -4,23 +4,36 @@ const terminalInput = (page: Page) => page.locator('#terminal-input');
 const run = async (page: Page, command: string) => { await terminalInput(page).fill(command); await terminalInput(page).press('Enter'); };
 const log = (page: Page) => page.locator('.terminal-log');
 
+const ARCHIVE_TITLES: Record<string, string> = {
+  H: '值班台与配枪登记',
+  R: '电讯区 收发记录',
+  J: '拘留／医疗区 值班日志',
+  A: '档案区 调阅记录',
+  C: '钟楼 维护记录',
+};
+
+const openShows = async (page: Page, code: string, title: string) => {
+  await expect(page.locator('#reader h2')).toHaveText(ARCHIVE_TITLES[code]);
+  await expect(page.locator('#reader .entry[data-doc] h3').filter({ hasText: title })).toHaveText(title);
+};
+
 test('桌面端通过指令台完成首次查询并写入档案库', async ({ page }) => {
   await page.goto('/');
   await run(page, 'OPEN B0-R-KLARA');
-  await expect(page.locator('#reader h2')).toHaveText('线路自检');
+  await openShows(page, 'R', '线路自检');
   await run(page, 'FILES');
   await expect(log(page)).toContainText('B0-R-KLARA · 线路自检');
-  await expect(page.locator('.archive-item').filter({ hasText: '线路自检' })).toBeVisible();
+  await expect(page.locator('.archive-item').filter({ hasText: '电讯区 收发记录' })).toBeVisible();
 });
 
 test('指令对大小写、分隔符与肉体顺序不敏感', async ({ page }) => {
   await page.goto('/');
   await run(page, 'b0:r:klara');
-  await expect(page.locator('#reader h2')).toHaveText('线路自检');
+  await openShows(page, 'R', '线路自检');
   await run(page, 'B0-H-VERRI-MARA-KOVAC');
-  await expect(page.locator('#reader h2')).toHaveText('封站命令');
+  await openShows(page, 'H', '封站命令');
   await run(page, 'b0:c:niko');
-  await expect(page.locator('#reader h2')).toHaveText('七钟校准');
+  await openShows(page, 'C', '七钟校准');
 });
 
 test('锁定档案与无效档案的反馈不泄露存在性', async ({ page }) => {
@@ -80,21 +93,21 @@ test('刷新后指令日志与发现状态保留', async ({ page }) => {
   await page.reload();
   await expect(log(page)).toContainText('> OPEN B0-R-KLARA');
   await expect(log(page)).toContainText('B0-R-KLARA · 线路自检');
-  await expect(page.locator('#reader h2')).toHaveText('线路自检');
+  await openShows(page, 'R', '线路自检');
 });
 
 test('B4 前 HELP 与 GOALS 不含正式推演术语', async ({ page }) => {
   await page.goto('/');
   await run(page, 'HELP');
   await run(page, 'GOALS');
-  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改']) await expect(page.locator('body')).not.toContainText(forbidden);
+  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改', '肉体']) await expect(page.locator('body')).not.toContainText(forbidden);
 });
 
 test('390px 移动端指令台可查询且页面不横向溢出', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   await run(page, 'OPEN B0-R-KLARA');
-  await expect(page.locator('#reader h2')).toHaveText('线路自检');
+  await openShows(page, 'R', '线路自检');
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
@@ -104,7 +117,7 @@ test('移动端世界标签展示背景志且不泄露正式推演术语', async
   await page.locator('[data-action="tab"][data-tab="world"]').click();
   await expect(page.locator('.world-panel h2')).toHaveText('1928 · 圣维拉');
   await expect(page.locator('.world-panel')).toContainText('维护井');
-  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改']) await expect(page.locator('body')).not.toContainText(forbidden);
+  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改', '肉体']) await expect(page.locator('body')).not.toContainText(forbidden);
   await page.reload();
   await expect(page.locator('[data-action="tab"][data-tab="world"]')).toHaveClass(/active/);
 });
@@ -118,7 +131,7 @@ test('HINT 在连续无效查询后逐级开放且不泄露正式推演术语', 
   const lastEntry = page.locator('.terminal-log li.terminal-entry').last();
   await expect(lastEntry).toContainText('> HINT');
   await expect(lastEntry).not.toContainText('提示尚未就绪');
-  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改']) await expect(page.locator('body')).not.toContainText(forbidden);
+  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改', '肉体']) await expect(page.locator('body')).not.toContainText(forbidden);
 });
 
 test('INSPECT 命中物品档案且不泄露正式推演术语', async ({ page }) => {
@@ -128,7 +141,7 @@ test('INSPECT 命中物品档案且不泄露正式推演术语', async ({ page }
   await expect(log(page).last()).toContainText('封条');
   await run(page, 'INSPECT 反潜鱼雷');
   await expect(log(page).last()).toContainText('没有找到该物品的档案记录');
-  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改']) await expect(page.locator('body')).not.toContainText(forbidden);
+  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改', '肉体']) await expect(page.locator('body')).not.toContainText(forbidden);
 });
 
 test('指令台完整走通 B0–B4 并开放推演面板', async ({ page }) => {
@@ -150,7 +163,7 @@ test('指令台完整走通 B0–B4 并开放推演面板', async ({ page }) => 
   ];
   for (const [command, title] of chain) {
     await run(page, command);
-    await expect(page.locator('#reader h2')).toHaveText(title);
+    await openShows(page, command.split('-')[1], title);
   }
   await run(page, 'FILES');
   await expect(page.locator('.terminal-log')).toContainText('B4-A-MATEO · 原始校样');
@@ -185,4 +198,35 @@ test('CLEAR 清空指令日志', async ({ page }) => {
   await run(page, 'CLEAR');
   await expect(log(page)).toContainText('指令日志已清空');
   await expect(log(page)).not.toContainText('调查指令：');
+});
+
+test('390px 移动端右栏按标签分页，非当前面板不同屏堆叠', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  const reveal: [string, string][] = [
+    ['OPEN B0-H-MARA-KOVAC-VERRI', '封站命令'],
+    ['OPEN B0-R-KLARA', '线路自检'],
+    ['OPEN B0-J-LIVIA-MATEO', '拘押体检'],
+    ['OPEN B0-C-NIKO', '七钟校准'],
+    ['OPEN B1-A-MARA-KOVAC', '私柜与暗记'],
+    ['OPEN B1-R-KLARA', '不会发报的报务员'],
+    ['OPEN B1-J-LIVIA-MATEO', '敲击与遗物'],
+    ['OPEN B1-C-NIKO', '少年的专业包扎'],
+    ['OPEN B2-A-MARA-KOVAC-VERRI', '名册三人场'],
+    ['OPEN B2-R-KLARA', '被改短的线路'],
+    ['OPEN B2-J-LIVIA-MATEO', '医生与译员互换'],
+    ['OPEN B3-A-MARA', '给第四双手的留言'],
+    ['OPEN B4-A-MATEO', '原始校样'],
+  ];
+  for (const [command] of reveal) await run(page, command);
+  const tabs = ['facts', 'world', 'notes', 'hypotheses'] as const;
+  for (const tab of tabs) {
+    await page.locator(`[data-action="tab"][data-tab="${tab}"]`).click();
+    await expect(page.locator(`.right-panel[data-tab-panel="${tab}"]`)).toBeVisible();
+    await expect(page.locator('.right > .mobile-visible')).toHaveCount(1);
+    for (const other of tabs) {
+      if (other === tab) continue;
+      await expect(page.locator(`.right-panel[data-tab-panel="${other}"]`)).toBeHidden();
+    }
+  }
 });

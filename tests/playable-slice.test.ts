@@ -14,7 +14,7 @@ import { chooseNewestSave, emptySave, migrateSave } from '../src/save.ts';
 test('v1 存档迁移保留笔记、标注、阅读位置与旧假设', () => {
   const migrated = migrateSave({ version: 1, discovered: ['doc_b0_r_klara'], read: ['doc_b0_r_klara'], annotations: { doc_b0_r_klara: ['s1:mechanical_fact'] }, notes: [{ id: 'n1', text: '旧笔记', refs: ['doc_b0_r_klara'] }], hypotheses: [{ body: 'klara', soul: 'verri' }], activeDoc: 'doc_b0_r_klara', query: { bell: 'b0', location: 'r_radio', bodies: ['klara'] } }, content.characters, content.documents);
   assert.ok(migrated);
-  assert.equal(migrated?.version, 4);
+  assert.equal(migrated?.version, 5);
   assert.equal(migrated?.notes[0].text, '旧笔记');
   assert.equal(migrated?.notes[0].refs[0].docId, 'doc_b0_r_klara');
   assert.equal(migrated?.annotations.doc_b0_r_klara[0], 's1:mechanical_fact');
@@ -29,7 +29,7 @@ test('v2 到 v3 迁移保留对象型段落证据引用并建立实时版框状�
   save.hypotheses.b1.klara.evidenceRefs.push({ docId: 'doc_b0_r_klara', segmentId: 's1' });
   const v2 = JSON.parse(JSON.stringify(save)) as Record<string, unknown>; v2.version = 2; delete v2.modifiedFrameDraft; delete v2.derivedOccupancyB5B7; delete v2.terminalLog;
   const reloaded = migrateSave(v2, content.characters, content.documents);
-  assert.equal(reloaded?.version, 4);
+  assert.equal(reloaded?.version, 5);
   assert.deepEqual(reloaded?.notes[0].refs, [{ docId: 'doc_b0_r_klara', segmentId: 's1' }]);
   assert.deepEqual(reloaded?.hypotheses.b1.klara.evidenceRefs, [{ docId: 'doc_b0_r_klara', segmentId: 's1' }]);
   assert.equal(reloaded?.activeSegmentId, 's1');
@@ -55,6 +55,21 @@ test('B5–B7 推导与作者基线完全一致', async () => {
   const author = JSON.parse(await readFile(new URL('../author/baseline.json', import.meta.url), 'utf8')) as { occupancy: Record<string, Record<string, string>> };
   const derived = deriveModifiedOccupancy(ORIGINAL_RING, validModifiedDraft());
   assert.deepEqual(derived, { b5: author.occupancy.b5, b6: author.occupancy.b6, b7: author.occupancy.b7 });
+});
+
+test('B5–B7 派生表按钮携带各自证据文档入口', () => {
+  const save = emptySave(content.characters);
+  save.discovered = ['doc_b6_a_niko']; save.read = ['doc_b6_a_niko'];
+  save.stageSubmissions.originalRing = { ring: [...ORIGINAL_RING], submittedAt: '2026-08-18T00:00:00.000Z', correct: true };
+  save.modifiedFrameDraft = validModifiedDraft();
+  save.modifiedFrameSubmission = { ...save.modifiedFrameDraft, correct: true, submittedAt: '2026-08-18T00:01:00.000Z' };
+  save.derivedOccupancyB5B7 = deriveModifiedOccupancy(ORIGINAL_RING, save.modifiedFrameSubmission);
+  const markup = hypothesesPanel(save, true);
+  const pairs: [string, string][] = [['b5', 'doc_b4_a_mateo'], ['b6', 'doc_b6_a_niko'], ['b7', 'doc_b5_a_niko_mateo']];
+  for (const [bell, docId] of pairs) {
+    assert.equal(markup.split(`data-bell="${bell}"`).length - 1, 7, `B${bell.toUpperCase()} 派生格应有 7 个按钮`);
+    assert.ok(markup.includes(`data-evidence-doc="${docId}" data-bell="${bell}"`), `B${bell.toUpperCase()} 派生格应指向 ${docId}`);
+  }
 });
 
 test('损坏导入会被拒绝，current 与 backup 选择较新的有效存档', () => {

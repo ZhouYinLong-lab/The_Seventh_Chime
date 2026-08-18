@@ -27,7 +27,7 @@
     "id": "IT-SLUG-N",
     "name": "Niko 名字活字",
     "aliases": ["活字", "Niko 活字"],
-    "description": "一枚印着 NIKO 名字的铅字块。活字离框之后，Niko 肉体仍出现在轮转之中。"
+    "description": "一枚印着 NIKO 名字的铅字块。活字离框之后，Niko 仍出现在后续时段的记录之中。"
   },
   {
     "id": "IT-TAPE-F",
@@ -57,7 +57,7 @@
     "id": "IT-KEY-K",
     "name": "Kovač 值勤钥匙串",
     "aliases": ["钥匙串", "值勤钥匙串"],
-    "description": "Kovač 的值勤钥匙串，覆盖枪套、行政柜与门禁登记的肉体权限。"
+    "description": "Kovač 的值勤钥匙串，覆盖枪套、行政柜与门禁登记的值勤权限。"
   },
   {
     "id": "IT-CARD-N",

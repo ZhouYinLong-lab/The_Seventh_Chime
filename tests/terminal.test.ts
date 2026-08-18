@@ -53,10 +53,10 @@ test('Tab 补全只覆盖已发现档案与指令', () => {
   assert.ok(completed && completed.startsWith('B0-') && !completed.endsWith(' '));
 });
 
-test('v3 存档迁移到 v4 保留全部状态并建立空指令日志', () => {
+test('v3 存档迁移保留全部状态并建立空指令日志', () => {
   const v3 = JSON.parse(JSON.stringify(emptySave(content.characters))) as Record<string, unknown>; v3.version = 3; delete v3.terminalLog;
   const migrated = migrateSave(v3, content.characters, content.documents);
-  assert.equal(migrated?.version, 4);
+  assert.equal(migrated?.version, 5);
   assert.deepEqual(migrated?.terminalLog, []);
   assert.equal(migrated?.discovered.length, 0);
 });

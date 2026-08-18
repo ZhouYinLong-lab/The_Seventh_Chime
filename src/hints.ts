@@ -30,7 +30,7 @@ export const hintFor = (node: string, level: 1 | 2 | 3 | 4) => {
   return [
     doc.hints[0] ?? `寻找 ${bellName(doc.bell)} 的 ${locationName(doc.location)} 记录。`,
     `下一步记录在 ${bellName(doc.bell)} 的 ${locationName(doc.location)}。`,
-    `该时段 ${locationName(doc.location)} 的在场肉体：${bodyNames(doc)}。查询条件须与档案登记完全一致。`,
+    `该时段 ${locationName(doc.location)} 的在场角色：${bodyNames(doc)}。查询条件须与档案登记完全一致。`,
     `直接输入：${canonicalKey(doc)}。`
   ][level - 1];
 };

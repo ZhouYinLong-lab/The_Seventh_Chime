@@ -525,5 +525,22 @@
       "niko",
       "anchored_body"
     ]
-  ]
+  ],
+  "examEvidence": {
+    "body_location": [
+      "doc_b4_j_livia",
+      "doc_b5_h_kovac_verri",
+      "doc_b7_r_klara_kovac_verri"
+    ],
+    "soul_identity": [
+      "doc_b5_j_livia",
+      "doc_b6_r_mara_klara",
+      "doc_b6_j_livia"
+    ],
+    "causal_continuity": [
+      "doc_b4_r_klara",
+      "doc_b5_r_mara_klara",
+      "doc_b6_h_mateo_kovac_verri"
+    ]
+  }
 }
