@@ -127,4 +127,13 @@ for (const category of expectedExamEvidence) {
   }
 }
 if (new Set(expectedExamEvidence.flatMap((category) => author.examEvidence[category])).size < 3) fail('终局证据白名单并集必须至少覆盖三份档案。');
+const feedbackSource = await readFile(new URL('../src/main.ts', import.meta.url), 'utf8');
+const characterNames = publicData.characters.map((character) => character.cn);
+const feedbackLiteral = /feedback = '([^']*)'/g;
+let feedbackMatch;
+while ((feedbackMatch = feedbackLiteral.exec(feedbackSource))) {
+  for (const name of characterNames) {
+    if (feedbackMatch[1].includes(name)) fail(`反馈文案字面量含角色名「${name}」：被动反馈不得硬编码角色名，角色名只能经动态标题注入。`);
+  }
+}
 console.log(`内容校验通过：${sceneIds.length} 个场景、${publicData.documents.length} 份玩家档案、${archives.length} 本档案、${items.length} 件物品、${worldEntries.length} 条背景、B7 顺序固定、终局答卷九项固定、终局证据白名单三类固定。`);

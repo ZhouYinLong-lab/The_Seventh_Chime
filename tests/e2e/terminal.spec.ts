@@ -44,7 +44,8 @@ test('锁定档案与无效档案的反馈不泄露存在性', async ({ page }) 
   await expect(log(page)).not.toContainText('内信号间枪击');
   await run(page, 'B5-X-MARA');
   await expect(log(page).last()).toContainText('无法识别的指令或档案编号');
-  await run(page, 'B0-H-MARA');
+  // B0-H 是开局公开组合，批次二起由差分文案接管；用无记录的 B5-H 保持「无效档案不泄露存在性」语义。
+  await run(page, 'B5-H-MARA');
   await expect(log(page).last()).toContainText('没有找到符合这些条件的主要记录');
 });
 

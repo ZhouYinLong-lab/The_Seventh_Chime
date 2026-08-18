@@ -58,3 +58,61 @@ test('重渲染保持左栏滚动位置', async ({ page }) => {
   const top = await left.evaluate((el) => el.scrollTop);
   expect(top).toBe(500);
 });
+
+test('初始身份句；连续 3 次无效查询后提示开放并逐层累积', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('.feedback')).toContainText('你是港务局派来的调查员');
+  await expect(page.locator('button[data-action="hint"]')).toHaveCount(0);
+  const invalidQuery = async () => {
+    await page.selectOption('#bell', 'b0');
+    await page.selectOption('#location', 'h_admin');
+    for (const input of await page.locator('input[data-body]').all()) if (await input.isChecked()) await input.uncheck();
+    await page.locator('input[data-body="mara"]').check();
+    await page.getByRole('button', { name: '检索记录' }).click();
+  };
+  await invalidQuery();
+  await invalidQuery();
+  await expect(page.locator('button[data-action="hint"]')).toHaveCount(0);
+  await invalidQuery();
+  await expect(page.locator('button[data-action="hint"]')).toBeVisible();
+  await page.locator('button[data-action="hint"]').click();
+  await expect(page.locator('.feedback')).toContainText('方向提示 1/4');
+  await invalidQuery();
+  await page.locator('button[data-action="hint"]').click();
+  await expect(page.locator('.feedback')).toContainText('方向提示 2/4');
+  await expect(page.locator('.feedback')).toContainText('；');
+});
+
+test('首次成功检索追加教学句，重开不再追加', async ({ page }) => {
+  await page.goto('/');
+  await query(page, 'b0', 'h_admin', ['mara', 'kovac', 'verri'], '封站命令');
+  await expect(page.locator('.feedback')).toContainText('已找到：封站命令');
+  await expect(page.locator('.feedback')).toContainText('精确组合定位');
+  await page.locator('.overlay-close').click();
+  await page.getByRole('button', { name: '检索记录' }).click();
+  await expect(page.locator('.feedback')).toContainText('重新打开：封站命令');
+  await expect(page.locator('.feedback')).not.toContainText('精确组合定位');
+});
+
+test('无效检索按已公开组合差分：时段×地点已有记录时提示核对角色', async ({ page }) => {
+  await page.goto('/');
+  await page.selectOption('#bell', 'b0');
+  await page.selectOption('#location', 'h_admin');
+  // 初始查询已默认勾选 B0-H 三人组，需清空后按单人条件查
+  for (const input of await page.locator('input[data-body]').all()) if (await input.isChecked()) await input.uncheck();
+  await page.locator('input[data-body="mara"]').check();
+  await page.getByRole('button', { name: '检索记录' }).click();
+  await expect(page.locator('.feedback')).toContainText('该时段与地点已有记录；请核对在场角色。');
+  // 非公开组合且未发现 → 通用文案
+  await page.selectOption('#bell', 'b1');
+  await page.getByRole('button', { name: '检索记录' }).click();
+  await expect(page.locator('.feedback')).toContainText('没有找到符合这些条件的主要记录。');
+});
+
+test('空笔记不保存并给出反馈', async ({ page }) => {
+  await page.goto('/');
+  // 桌面端笔记面板常显于右侧栏（移动端才用 tab 导航）
+  await page.getByRole('button', { name: '保存笔记' }).click();
+  await expect(page.locator('.feedback')).toContainText('笔记为空，未保存。');
+  await expect(page.locator('.notes')).toContainText('还没有笔记。');
+});
