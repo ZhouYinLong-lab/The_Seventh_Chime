@@ -354,6 +354,8 @@ th:first-child { position: sticky; left: 0; background: var(--bg-secondary); tex
   .workspace > aside, .workspace > section { display: none; }
   .workspace > .mobile-visible { display: grid; margin-bottom: .8rem; }
   .left.mobile-visible, .right.mobile-visible { gap: .8rem; }
+  .right > * { display: none; min-width: 0; max-width: 100%; }
+  .right > .mobile-visible { display: block; }
   .reader { min-height: 0; }
   .metadata { grid-template-columns: 1fr; }
   .archive-heading { flex-direction: column; }

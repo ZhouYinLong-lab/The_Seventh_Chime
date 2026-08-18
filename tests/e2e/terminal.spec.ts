@@ -186,3 +186,34 @@ test('CLEAR 清空指令日志', async ({ page }) => {
   await expect(log(page)).toContainText('指令日志已清空');
   await expect(log(page)).not.toContainText('调查指令：');
 });
+
+test('390px 移动端右栏按标签分页，非当前面板不同屏堆叠', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  const reveal: [string, string][] = [
+    ['OPEN B0-H-MARA-KOVAC-VERRI', '封站命令'],
+    ['OPEN B0-R-KLARA', '线路自检'],
+    ['OPEN B0-J-LIVIA-MATEO', '拘押体检'],
+    ['OPEN B0-C-NIKO', '七钟校准'],
+    ['OPEN B1-A-MARA-KOVAC', '私柜与暗记'],
+    ['OPEN B1-R-KLARA', '不会发报的报务员'],
+    ['OPEN B1-J-LIVIA-MATEO', '敲击与遗物'],
+    ['OPEN B1-C-NIKO', '少年的专业包扎'],
+    ['OPEN B2-A-MARA-KOVAC-VERRI', '名册三人场'],
+    ['OPEN B2-R-KLARA', '被改短的线路'],
+    ['OPEN B2-J-LIVIA-MATEO', '医生与译员互换'],
+    ['OPEN B3-A-MARA', '给第四双手的留言'],
+    ['OPEN B4-A-MATEO', '原始校样'],
+  ];
+  for (const [command] of reveal) await run(page, command);
+  const tabs = ['facts', 'world', 'notes', 'hypotheses'] as const;
+  for (const tab of tabs) {
+    await page.locator(`[data-action="tab"][data-tab="${tab}"]`).click();
+    await expect(page.locator(`.right-panel[data-tab-panel="${tab}"]`)).toBeVisible();
+    await expect(page.locator('.right > .mobile-visible')).toHaveCount(1);
+    for (const other of tabs) {
+      if (other === tab) continue;
+      await expect(page.locator(`.right-panel[data-tab-panel="${other}"]`)).toBeHidden();
+    }
+  }
+});

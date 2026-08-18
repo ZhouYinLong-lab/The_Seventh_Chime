@@ -57,6 +57,21 @@ test('B5–B7 推导与作者基线完全一致', async () => {
   assert.deepEqual(derived, { b5: author.occupancy.b5, b6: author.occupancy.b6, b7: author.occupancy.b7 });
 });
 
+test('B5–B7 派生表按钮携带各自证据文档入口', () => {
+  const save = emptySave(content.characters);
+  save.discovered = ['doc_b6_a_niko']; save.read = ['doc_b6_a_niko'];
+  save.stageSubmissions.originalRing = { ring: [...ORIGINAL_RING], submittedAt: '2026-08-18T00:00:00.000Z', correct: true };
+  save.modifiedFrameDraft = validModifiedDraft();
+  save.modifiedFrameSubmission = { ...save.modifiedFrameDraft, correct: true, submittedAt: '2026-08-18T00:01:00.000Z' };
+  save.derivedOccupancyB5B7 = deriveModifiedOccupancy(ORIGINAL_RING, save.modifiedFrameSubmission);
+  const markup = hypothesesPanel(save, true);
+  const pairs: [string, string][] = [['b5', 'doc_b4_a_mateo'], ['b6', 'doc_b6_a_niko'], ['b7', 'doc_b5_a_niko_mateo']];
+  for (const [bell, docId] of pairs) {
+    assert.equal(markup.split(`data-bell="${bell}"`).length - 1, 7, `B${bell.toUpperCase()} 派生格应有 7 个按钮`);
+    assert.ok(markup.includes(`data-evidence-doc="${docId}" data-bell="${bell}"`), `B${bell.toUpperCase()} 派生格应指向 ${docId}`);
+  }
+});
+
 test('损坏导入会被拒绝，current 与 backup 选择较新的有效存档', () => {
   const older = emptySave(content.characters); older.updatedAt = '2026-01-01T00:00:00.000Z';
   const newer = emptySave(content.characters); newer.updatedAt = '2026-02-01T00:00:00.000Z';

@@ -91,6 +91,17 @@ const submitLiveFrame = async (page: Page) => {
   await expect(page.getByRole('heading', { name: '由已提交实时版框推导' })).toBeVisible();
 };
 
+test('桌面端派生表证据入口按列打开对应档案', async ({ page }) => {
+  await page.goto('/');
+  await completeLiveFramePrerequisites(page);
+  await submitLiveFrame(page);
+  await page.locator('button.derived-fact[data-bell="b6"]').first().click();
+  await expect(page.locator('#reader h2')).toHaveText('六槽副表');
+  await showInference(page);
+  await page.locator('button.derived-fact[data-bell="b7"]').first().click();
+  await expect(page.locator('#reader h2')).toHaveText('维护井来客');
+});
+
 test('桌面端新存档通过 B0–B4，提交圆环后刷新仍保留', async ({ page }) => {
   await page.goto('/');
   await completeB4(page);
