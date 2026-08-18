@@ -10,5 +10,5 @@
   {"id":"arch_person_niko","kind":"person","entityId":"niko","title":"《尼科·彼得罗维奇 人事卷宗》","subtitle":"钟楼学徒 · 年轻、瘦小、熟悉维护井","description":"尼科·彼得罗维奇出现在各时段的记录：检修、包扎与钟楼维护。"},
   {"id":"arch_person_mateo","kind":"person","entityId":"mateo","title":"《马特奥·里乌斯 人事卷宗》","subtitle":"排字工／被拘押者 · 双手有排字灼痕","description":"马特奥·里乌斯出现在各时段的记录：拘押、排字与证词。"},
   {"id":"arch_person_kovac","kind":"person","entityId":"kovac","title":"《伊利亚·科瓦奇 人事卷宗》","subtitle":"港警队长 · 持枪、熟悉门禁程序","description":"伊利亚·科瓦奇出现在各时段的记录：门禁、配枪与搜查。"},
-  {"id":"arch_person_verri","kind":"person","entityId":"verri","title":"《奥古斯托·维里 人事卷宗》","subtitle":"海关专员 · 年长，呼吸状况不稳","description":"奥古斯托·维里出现在各时段的记录：封站命令、钥匙与海关事务。"}
+  {"id":"arch_person_verri","kind":"person","entityId":"verri","title":"《奥古斯托·维里 人事卷宗》","subtitle":"海关专员 · 年长，呼吸状况不稳","description":"奥古斯托·维里出现在各时段的记录：行政命令签发前后、钥匙保管与海关事务。"}
 ]

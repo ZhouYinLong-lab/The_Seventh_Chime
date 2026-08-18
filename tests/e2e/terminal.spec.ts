@@ -4,10 +4,23 @@ const terminalInput = (page: Page) => page.locator('#terminal-input');
 const run = async (page: Page, command: string) => { await terminalInput(page).fill(command); await terminalInput(page).press('Enter'); };
 const log = (page: Page) => page.locator('.terminal-log');
 
+const ARCHIVE_TITLES: Record<string, string> = {
+  H: '值班台与配枪登记',
+  R: '电讯区 收发记录',
+  J: '拘留／医疗区 值班日志',
+  A: '档案区 调阅记录',
+  C: '钟楼 维护记录',
+};
+
+const openShows = async (page: Page, code: string, title: string) => {
+  await expect(page.locator('#reader h2')).toHaveText(ARCHIVE_TITLES[code]);
+  await expect(page.locator('#reader .entry[data-doc] h3').filter({ hasText: title })).toHaveText(title);
+};
+
 test('桌面端通过指令台完成首次查询并写入档案库', async ({ page }) => {
   await page.goto('/');
   await run(page, 'OPEN B0-R-KLARA');
-  await expect(page.locator('#reader h2')).toHaveText('线路自检');
+  await openShows(page, 'R', '线路自检');
   await run(page, 'FILES');
   await expect(log(page)).toContainText('B0-R-KLARA · 线路自检');
   await expect(page.locator('.archive-item').filter({ hasText: '线路自检' })).toBeVisible();
@@ -16,11 +29,11 @@ test('桌面端通过指令台完成首次查询并写入档案库', async ({ pa
 test('指令对大小写、分隔符与肉体顺序不敏感', async ({ page }) => {
   await page.goto('/');
   await run(page, 'b0:r:klara');
-  await expect(page.locator('#reader h2')).toHaveText('线路自检');
+  await openShows(page, 'R', '线路自检');
   await run(page, 'B0-H-VERRI-MARA-KOVAC');
-  await expect(page.locator('#reader h2')).toHaveText('封站命令');
+  await openShows(page, 'H', '封站命令');
   await run(page, 'b0:c:niko');
-  await expect(page.locator('#reader h2')).toHaveText('七钟校准');
+  await openShows(page, 'C', '七钟校准');
 });
 
 test('锁定档案与无效档案的反馈不泄露存在性', async ({ page }) => {
@@ -80,7 +93,7 @@ test('刷新后指令日志与发现状态保留', async ({ page }) => {
   await page.reload();
   await expect(log(page)).toContainText('> OPEN B0-R-KLARA');
   await expect(log(page)).toContainText('B0-R-KLARA · 线路自检');
-  await expect(page.locator('#reader h2')).toHaveText('线路自检');
+  await openShows(page, 'R', '线路自检');
 });
 
 test('B4 前 HELP 与 GOALS 不含正式推演术语', async ({ page }) => {
@@ -94,7 +107,7 @@ test('390px 移动端指令台可查询且页面不横向溢出', async ({ page 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
   await run(page, 'OPEN B0-R-KLARA');
-  await expect(page.locator('#reader h2')).toHaveText('线路自检');
+  await openShows(page, 'R', '线路自检');
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
@@ -150,7 +163,7 @@ test('指令台完整走通 B0–B4 并开放推演面板', async ({ page }) => 
   ];
   for (const [command, title] of chain) {
     await run(page, command);
-    await expect(page.locator('#reader h2')).toHaveText(title);
+    await openShows(page, command.split('-')[1], title);
   }
   await run(page, 'FILES');
   await expect(page.locator('.terminal-log')).toContainText('B4-A-MATEO · 原始校样');

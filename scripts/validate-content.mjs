@@ -68,6 +68,11 @@ for (const meta of archives) {
 const memberDocs = (meta) => publicData.documents.filter((doc) => meta.kind === 'location'
   ? doc.location === meta.entityId
   : doc.bodies.includes(meta.entityId) || doc.segments.some((segment) => segment.speaker === meta.entityId));
+for (const meta of archives) {
+  for (const title of memberDocs(meta).map((doc) => doc.title)) {
+    if (`${meta.title}${meta.subtitle}${meta.description}`.includes(title)) fail(`${meta.id} 的档案文案泄露了成员标题「${title}」。`);
+  }
+}
 const locationArchives = archives.filter((meta) => meta.kind === 'location');
 if (locationArchives.length !== 5) fail('地点档案必须恰有 5 本。');
 const locationMemberIds = locationArchives.flatMap((meta) => memberDocs(meta).map((doc) => doc.id));

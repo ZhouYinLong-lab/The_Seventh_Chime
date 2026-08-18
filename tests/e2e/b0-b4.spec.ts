@@ -3,13 +3,22 @@ import { expect, test, type Page } from '@playwright/test';
 const B7_ORDER = ['jump', 'tape_start_and_interlock', 'list_to_signal_room', 'identity_check_blocked', 'holster_seal_broken', 'shot', 'tape_complete'];
 const EXAM_ORDER = ['corpse_body', 'dead_soul', 'shooter_soul', 'shooter_body', 'believed_target_soul', 'escaped_soul', 'escaped_body', 'frame_modifier', 'anchored_body'];
 
+const ARCHIVE_TITLES: Record<string, string> = {
+  h_admin: '值班台与配枪登记',
+  r_radio: '电讯区 收发记录',
+  j_medical: '拘留／医疗区 值班日志',
+  a_archive: '档案区 调阅记录',
+  c_bell: '钟楼 维护记录',
+};
+
 const query = async (page: Page, bell: string, location: string, bodies: string[], title: string) => {
   await page.selectOption('#bell', bell);
   await page.selectOption('#location', location);
   for (const input of await page.locator('input[data-body]').all()) if (await input.isChecked()) await input.uncheck();
   for (const body of bodies) await page.locator(`input[data-body="${body}"]`).check();
   await page.getByRole('button', { name: '检索记录' }).click();
-  await expect(page.locator('#reader h2')).toHaveText(title);
+  await expect(page.locator('#reader h2')).toHaveText(ARCHIVE_TITLES[location]);
+  await expect(page.locator('#reader .entry[data-doc] h3').filter({ hasText: title })).toHaveText(title);
 };
 
 const completeB4 = async (page: Page) => {
@@ -49,9 +58,9 @@ const showArchive = async (page: Page) => {
   if (await archiveTab.isVisible()) await archiveTab.click();
 };
 
-const addLiveEvidence = async (page: Page, index = 0) => {
+const addLiveEvidence = async (page: Page) => {
   await showArchive(page);
-  await page.locator('#reader').getByRole('button', { name: '选中本段' }).nth(index).click();
+  await page.locator('#reader .entry.current').getByRole('button', { name: '选中本段' }).first().click();
   await showInference(page);
   await page.getByRole('button', { name: '引用当前选中段' }).click();
 };
@@ -80,13 +89,13 @@ const submitLiveFrame = async (page: Page) => {
   for (const [index, body] of ['mara', 'klara', 'livia', 'verri', 'mateo', 'kovac'].entries()) await page.locator(`select[data-live-ring-index="${index}"]`).selectOption(body);
   await showQuery(page);
   await query(page, 'b4', 'a_archive', ['mateo'], '原始校样');
-  await addLiveEvidence(page, 0);
+  await addLiveEvidence(page);
   await showQuery(page);
   await query(page, 'b6', 'a_archive', ['niko'], '六槽副表');
-  await addLiveEvidence(page, 0);
+  await addLiveEvidence(page);
   await showQuery(page);
   await query(page, 'b5', 'a_archive', ['niko', 'mateo'], '维护井来客');
-  await addLiveEvidence(page, 0);
+  await addLiveEvidence(page);
   await page.getByRole('button', { name: '提交实时版框' }).click();
   await expect(page.getByRole('heading', { name: '由已提交实时版框推导' })).toBeVisible();
 };
@@ -96,17 +105,19 @@ test('桌面端派生表证据入口按列打开对应档案', async ({ page }) 
   await completeLiveFramePrerequisites(page);
   await submitLiveFrame(page);
   await page.locator('button.derived-fact[data-bell="b6"]').first().click();
-  await expect(page.locator('#reader h2')).toHaveText('六槽副表');
+  await expect(page.locator('#reader h2')).toHaveText('档案区 调阅记录');
+  await expect(page.locator('#reader .entry[data-doc] h3').filter({ hasText: '六槽副表' })).toHaveText('六槽副表');
   await showInference(page);
   await page.locator('button.derived-fact[data-bell="b7"]').first().click();
-  await expect(page.locator('#reader h2')).toHaveText('维护井来客');
+  await expect(page.locator('#reader h2')).toHaveText('档案区 调阅记录');
+  await expect(page.locator('#reader .entry[data-doc] h3').filter({ hasText: '维护井来客' })).toHaveText('维护井来客');
 });
 
 test('桌面端新存档通过 B0–B4，提交圆环后刷新仍保留', async ({ page }) => {
   await page.goto('/');
   await completeB4(page);
   await expect(page.getByRole('heading', { name: '灵魂假设' })).toBeVisible();
-  await page.locator('#reader').getByRole('button', { name: '选中本段' }).first().click();
+  await page.locator('#reader .entry.current').getByRole('button', { name: '选中本段' }).first().click();
   const maraHypothesis = page.locator('.hypothesis-grid tr').filter({ has: page.locator('select[data-hyp-body="mara"]') });
   await maraHypothesis.getByRole('button', { name: '引用当前段' }).click();
   await expect(maraHypothesis.getByRole('button', { name: '证据 1' })).toBeVisible();
@@ -132,10 +143,24 @@ test('段落引用在刷新后仍保留', async ({ page }) => {
   await query(page, 'b0', 'r_radio', ['klara'], '线路自检');
   await query(page, 'b0', 'r_radio', ['klara'], '线路自检');
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('btb.save.v1.current') || '{}').playtestEvents.some((event: { kind: string }) => event.kind === 'revisit'))).toBe(true);
-  await page.locator('#reader').getByRole('button', { name: '引用本段' }).first().click();
+  await page.locator('#reader .entry.current').getByRole('button', { name: '引用本段' }).first().click();
   await expect(page.getByText('摘录：线路自检纸带完整传递长句。')).toBeVisible();
   await page.reload();
   await expect(page.getByText('摘录：线路自检纸带完整传递长句。')).toBeVisible();
+});
+
+test('整本档案阅读器封条不泄场景标题，尝试解封给出线索不足反馈', async ({ page }) => {
+  await page.goto('/');
+  await query(page, 'b0', 'r_radio', ['klara'], '线路自检');
+  const seals = page.locator('#reader .entry.seal');
+  await expect(seals).toHaveCount(7);
+  await expect(seals.first()).toContainText('封存条目 №2');
+  await expect(seals.first()).toContainText('B1｜第一声后 · R');
+  await expect(seals.first()).not.toContainText('不会发报的报务员');
+  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改', '肉体']) await expect(page.locator('body')).not.toContainText(forbidden);
+  await seals.first().getByRole('button', { name: '尝试解封' }).click();
+  await expect(page.locator('.seal-feedback')).toHaveText('该条记录仍被封存：线索不足。');
+  await expect(page.locator('.feedback')).toContainText('该条记录仍被封存：线索不足。');
 });
 
 test('档案比较可进入和退出', async ({ page }) => {
@@ -198,7 +223,7 @@ const submitFinalExam = async (page: Page, answers: Record<string, string>) => {
 const citeExamEvidence = async (page: Page, category: string, bell: string, location: string, bodies: string[], title: string) => {
   await showQuery(page);
   await query(page, bell, location, bodies, title);
-  await page.locator('#reader').getByRole('button', { name: '选中本段' }).first().click();
+  await page.locator('#reader .entry.current').getByRole('button', { name: '选中本段' }).first().click();
   await showInference(page);
   await page.locator(`button[data-action="add-exam-evidence"][data-category="${category}"]`).click();
 };
