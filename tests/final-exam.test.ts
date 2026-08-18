@@ -6,15 +6,14 @@ import { content } from '../src/content.ts';
 import { examAvailable, examDraftEmpty, examQuestions, finalExamPanel, validateExam } from '../src/final-exam.ts';
 import { emptySave, migrateSave } from '../src/save.ts';
 
-const canonical = Object.fromEntries(examQuestions.map((question) => [question.id, question.answer])) as Record<string, string>;
-const aligned = Object.fromEntries(b7Events.map((event) => [event.id, event.time])) as Record<string, string>;
+const baseline = JSON.parse(readFileSync(new URL('../author/baseline.json', import.meta.url), 'utf8')) as { b7Timeline: [string, string][]; finalAnswers: [string, string][] };
+const canonical = Object.fromEntries(baseline.finalAnswers.map(([answer, id]) => [id, answer])) as Record<string, string>;
+const aligned = Object.fromEntries(baseline.b7Timeline.map(([time, id]) => [id, time])) as Record<string, string>;
 
 test('终局答卷九项与作者基线一致', () => {
-  const baseline = JSON.parse(readFileSync(new URL('../author/baseline.json', import.meta.url), 'utf8')) as { finalAnswers: [string, string][] };
   assert.equal(examQuestions.length, 9);
   assert.equal(new Set(examQuestions.map((question) => question.id)).size, 9);
   assert.deepEqual(examQuestions.map((question) => question.id), baseline.finalAnswers.map(([, id]) => id));
-  assert.deepEqual(examQuestions.map((question) => question.answer), baseline.finalAnswers.map(([answer]) => answer));
 });
 
 test('答卷判定只接受完整且完全正确的九项', () => {
@@ -27,7 +26,7 @@ test('答卷判定只接受完整且完全正确的九项', () => {
   assert.equal(validateExam(empty), false);
 });
 
-test('答卷只在 B7 对齐确认后出现', () => {
+test('答卷只在 B7 对齐确认后出现且不含明文答案', () => {
   const before = emptySave(content.characters);
   assert.equal(examAvailable(before), false);
   assert.equal(finalExamPanel(before), '');
@@ -37,7 +36,9 @@ test('答卷只在 B7 对齐确认后出现', () => {
   const panel = finalExamPanel(after);
   assert.ok(panel.includes('提交答卷'));
   assert.ok(panel.includes('终局答卷'));
-  for (const question of examQuestions) assert.ok(panel.includes(`data-exam-field="${question.id}"`), `缺少 ${question.id}`);
+  for (const question of examQuestions) assert.ok(panel.includes(`data-exam-index="${examQuestions.indexOf(question)}"`), `缺少 ${question.id}`);
+  assert.ok(!panel.includes('data-exam-field'), '面板不应出现带 id 的字段属性');
+  assert.ok(!panel.includes('answer:'), '面板不应出现明文答案字段');
 });
 
 test('提交后答卷显示三角还原与终局', () => {

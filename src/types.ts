@@ -22,7 +22,7 @@ export interface ModifiedFrameSubmission extends ModifiedFrameDraft { submittedA
 export type DerivedOccupancyB5B7 = Record<'b5' | 'b6' | 'b7', Record<BodyId, BodyId>>;
 export interface HintState { nodeKey: string; invalidQueries: number; shownLevel: 0 | 1 | 2 | 3 | 4; interactionSinceHint: boolean; lastProgressAt: string }
 export type PlaytestEventKind = 'query' | 'invalid_query' | 'unlock' | 'revisit' | 'compare' | 'hint' | 'b4_reveal' | 'hypothesis_edit' | 'ring_submit' | 'modified_frame_reveal' | 'modified_frame_edit' | 'modified_frame_submit' | 'terminal_command' | 'b7_alignment_submit' | 'final_exam_submit';
-export interface B7TimelineEvent { id: string; label: string; time: string }
+export interface B7TimelineEvent { id: string; label: string }
 export interface B7Alignment { assigned: Record<string, string>; submittedAt: string; correct: true }
 export interface FinalExam { answers: Record<string, string>; submittedAt: string; correct: true }
 export interface PlaytestEvent { kind: PlaytestEventKind; at: string; detail?: Record<string, string | number | boolean> }

@@ -1,17 +1,17 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
-import { b7AlignmentAvailable, b7AlignmentPanel, b7Events, b7TimelineTimes, validateB7Alignment } from '../src/b7-timeline.ts';
+import { b7AlignmentAvailable, b7AlignmentPanel, b7Events, b7TimeOptions, validateB7Alignment } from '../src/b7-timeline.ts';
 import { content, documents } from '../src/content.ts';
 import { emptySave, migrateSave } from '../src/save.ts';
 
-const correct = Object.fromEntries(b7Events.map((event) => [event.id, event.time])) as Record<string, string>;
+const baseline = JSON.parse(readFileSync(new URL('../author/baseline.json', import.meta.url), 'utf8')) as { b7Timeline: [string, string][] };
+const correct = Object.fromEntries(baseline.b7Timeline.map(([time, id]) => [id, time])) as Record<string, string>;
 
 test('B7 秒级事件与作者基线顺序一致', () => {
-  const baseline = JSON.parse(readFileSync(new URL('../author/baseline.json', import.meta.url), 'utf8')) as { b7Timeline: [string, string][] };
   assert.deepEqual(b7Events.map((event) => event.id), baseline.b7Timeline.map(([, event]) => event));
   assert.equal(new Set(b7Events.map((event) => event.id)).size, 7);
-  assert.equal(new Set(b7TimelineTimes).size, 7, '时刻必须互不重复');
+  assert.equal(new Set(b7TimeOptions).size, 7, '时刻选项必须互不重复');
 });
 
 test('对齐判定只接受完整且完全正确的分配', () => {
@@ -29,8 +29,12 @@ test('面板只在发现 B7-R 后出现', () => {
   const after = emptySave(content.characters);
   after.discovered.push('doc_b7_r_klara_kovac_verri');
   assert.equal(b7AlignmentAvailable(after), true);
-  assert.ok(b7AlignmentPanel(after).includes('提交对齐'));
-  assert.ok(b7AlignmentPanel(after).includes('23:00:43'));
+  const panel = b7AlignmentPanel(after);
+  assert.ok(panel.includes('提交对齐'));
+  assert.ok(panel.includes('23:00:43'));
+  assert.ok(panel.includes('data-b7-index="0"'), '事件应使用索引属性');
+  assert.ok(!panel.includes('data-b7-time'), '面板不应出现带 id 的时刻属性');
+  assert.ok(!panel.includes('time:'), '面板不应出现明文时刻字段');
 });
 
 test('v4 存档携带 B7 对齐草稿与确认结果往返', () => {

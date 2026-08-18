@@ -1,5 +1,5 @@
 import './styles.css';
-import { validateB7Alignment } from './b7-timeline';
+import { b7Events, validateB7Alignment } from './b7-timeline';
 import { examQuestions, validateExam } from './final-exam';
 import { content, documents, isB4Revealed } from './content';
 import { currentProgressNode, hintAvailable, hintFor, resetHintState } from './hints';
@@ -164,8 +164,8 @@ app.addEventListener('change', (event) => {
   else if (target.dataset.ringIndex) state.draftOriginalRing[Number(target.dataset.ringIndex)] = target.value;
   else if (target.dataset.modifiedField) { const field = target.dataset.modifiedField as keyof Pick<typeof state.modifiedFrameDraft, 'changedAfterBell' | 'modifierSoul' | 'removedName' | 'anchorBody'>; state.modifiedFrameDraft[field] = (target.value || null) as never; state.modifiedFrameSubmission = undefined; state.derivedOccupancyB5B7 = null; recordEvent(state, 'modified_frame_edit', { field }); }
   else if (target.dataset.liveRingIndex) { state.modifiedFrameDraft.sixBodyRing[Number(target.dataset.liveRingIndex)] = target.value; state.modifiedFrameSubmission = undefined; state.derivedOccupancyB5B7 = null; recordEvent(state, 'modified_frame_edit', { field: 'sixBodyRing' }); }
-  else if (target.dataset.b7Time) { state.b7AlignmentDraft[target.dataset.b7Time] = target.value; }
-  else if (target.dataset.examField) { state.finalExamDraft[target.dataset.examField] = target.value; }
+  else if (target.dataset.b7Index) { const event = b7Events[Number(target.dataset.b7Index)]; if (event) state.b7AlignmentDraft[event.id] = target.value; }
+  else if (target.dataset.examIndex) { const question = examQuestions[Number(target.dataset.examIndex)]; if (question) state.finalExamDraft[question.id] = target.value; }
   else if (target instanceof HTMLInputElement && target.id === 'import-file' && target.files?.[0]) { importSave(target.files[0]); return; }
   saveAndRender();
 });

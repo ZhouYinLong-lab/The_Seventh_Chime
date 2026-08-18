@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
+const B7_ORDER = ['jump', 'tape_start_and_interlock', 'list_to_signal_room', 'identity_check_blocked', 'holster_seal_broken', 'shot', 'tape_complete'];
+const EXAM_ORDER = ['corpse_body', 'dead_soul', 'shooter_soul', 'shooter_body', 'believed_target_soul', 'escaped_soul', 'escaped_body', 'frame_modifier', 'anchored_body'];
+
 const query = async (page: Page, bell: string, location: string, bodies: string[], title: string) => {
   await page.selectOption('#bell', bell);
   await page.selectOption('#location', location);
@@ -173,11 +176,11 @@ const completeB7Chain = async (page: Page) => {
 };
 
 const alignB7 = async (page: Page, times: Record<string, string>) => {
-  for (const [eventId, time] of Object.entries(times)) await page.locator(`select[data-b7-time="${eventId}"]`).selectOption(time);
+  for (const [eventId, time] of Object.entries(times)) await page.locator(`select[data-b7-index="${B7_ORDER.indexOf(eventId)}"]`).selectOption(time);
 };
 
 const submitFinalExam = async (page: Page, answers: Record<string, string>) => {
-  for (const [questionId, character] of Object.entries(answers)) await page.locator(`select[data-exam-field="${questionId}"]`).selectOption(character);
+  for (const [questionId, character] of Object.entries(answers)) await page.locator(`select[data-exam-index="${EXAM_ORDER.indexOf(questionId)}"]`).selectOption(character);
 };
 
 test('桌面端完成 B7 秒级对齐与终局答卷，错误提交被拒，刷新后保留', async ({ page }) => {
@@ -196,10 +199,10 @@ test('桌面端完成 B7 秒级对齐与终局答卷，错误提交被拒，刷�
     tape_complete: '23:01:12',
   };
   await alignB7(page, times);
-  await page.locator('select[data-b7-time="shot"]').selectOption('23:00:39');
+  await page.locator('select[data-b7-index="5"]').selectOption('23:00:39');
   await page.getByRole('button', { name: '提交对齐' }).click();
   await expect(page.getByText('这组对齐与 B7 记录冲突')).toBeVisible();
-  await page.locator('select[data-b7-time="shot"]').selectOption('23:00:43');
+  await page.locator('select[data-b7-index="5"]').selectOption('23:00:43');
   await page.getByRole('button', { name: '提交对齐' }).click();
   await expect(page.getByText('对齐已确认：机器日志、封条与名单位置三条证据线指向同一顺序。')).toBeVisible();
   await expect(page.getByRole('heading', { name: '终局答卷' })).toBeVisible();
@@ -225,8 +228,8 @@ test('桌面端完成 B7 秒级对齐与终局答卷，错误提交被拒，刷�
   await page.reload();
   await expect(page.getByRole('heading', { name: '三角还原' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '终局', exact: true })).toBeVisible();
-  await expect(page.locator('select[data-b7-time]')).toHaveCount(0);
-  await expect(page.locator('select[data-exam-field]')).toHaveCount(0);
+  await expect(page.locator('select[data-b7-index]')).toHaveCount(0);
+  await expect(page.locator('select[data-exam-index]')).toHaveCount(0);
 });
 
 test('390px 移动端完成实时版框闭环且页面不横向溢出', async ({ page }) => {

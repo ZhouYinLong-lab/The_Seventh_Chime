@@ -1,6 +1,6 @@
 import { isSameOrientation } from './ring';
 import { deriveModifiedOccupancy, emptyModifiedFrameDraft, validateModifiedFrame } from './modified-frame';
-import { b7Events, validateB7Alignment } from './b7-timeline';
+import { b7Events, b7TimeOptions, validateB7Alignment } from './b7-timeline';
 import { examDraftEmpty, examQuestions, validateExam } from './final-exam';
 import type { ArchiveDocument, ArchiveFilters, B7Alignment, BellId, BodyId, Character, DerivedOccupancyB5B7, EvidenceReference, FinalExam, HintState, HypothesisCell, HypothesisGrid, ModifiedFrameDraft, ModifiedFrameSubmission, Note, PlaytestEvent, SaveV2, SaveV3, SaveV4, TerminalEntry } from './types';
 
@@ -80,7 +80,7 @@ const parseTerminalLog = (value: unknown): TerminalEntry[] | null => {
 const parseB7Draft = (value: unknown): Record<string, string> | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const source = value as Record<string, unknown>;
-  for (const event of b7Events) { const chosen = source[event.id]; if (chosen !== undefined && (typeof chosen !== 'string' || !['', ...b7Events.map((item) => item.time)].includes(chosen))) return null; }
+  for (const event of b7Events) { const chosen = source[event.id]; if (chosen !== undefined && (typeof chosen !== 'string' || !['', ...b7TimeOptions].includes(chosen))) return null; }
   const draft: Record<string, string> = {};
   for (const event of b7Events) { const chosen = source[event.id]; draft[event.id] = typeof chosen === 'string' ? chosen : ''; }
   return draft;
