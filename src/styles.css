@@ -173,6 +173,18 @@ header p { margin: 0; }
 }
 .left { left: .8rem; width: min(330px, 30vw); }
 .right { right: .8rem; width: min(360px, 32vw); }
+.drawer-toggle {
+  position: absolute;
+  top: .4rem;
+  right: .4rem;
+  z-index: 3;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+}
+.left.collapsed, .right.collapsed { display: flex; align-items: flex-start; gap: 0; width: auto; padding: .4rem; overflow: visible; }
+.left.collapsed .drawer-toggle, .right.collapsed .drawer-toggle { position: static; }
+.left.collapsed .drawer-content, .right.collapsed .drawer-content { display: none; }
 .overlay {
   position: absolute;
   inset: 0;
@@ -411,10 +423,13 @@ header, .bell-rail, .mobile-nav { flex-shrink: 0; }
   .scene { overflow-y: auto; }
   .scene-map-layer { position: static; overflow: visible; padding: .8rem .8rem 0; }
   .scene > .left, .scene > .right { display: none; position: static; width: auto; }
-  .scene > .mobile-visible { display: grid; margin-bottom: .8rem; }
+  .scene > .left.mobile-visible { display: grid; margin-bottom: .8rem; }
+  .scene > .right.mobile-visible { display: grid; position: absolute; inset: auto 0 .6rem 0; z-index: 3; max-height: 62vh; margin: 0; overflow-y: auto; }
   .scene > *, .panel, .live-frame, .live-evidence, .live-evidence li { min-width: 0; max-width: 100%; }
-  .right > * { display: none; min-width: 0; max-width: 100%; }
-  .right > .mobile-visible { display: block; }
+  .right .right-panel { display: none; min-width: 0; max-width: 100%; }
+  .right .right-panel.mobile-visible { display: block; }
+  .drawer-toggle { display: none; }
+  .collapsed .drawer-content { display: block; }
   .overlay { padding: 0; }
   .file-card { width: 100%; max-width: 100%; height: 100%; max-height: 100%; }
   .overlay-close { top: .4rem; right: .4rem; }

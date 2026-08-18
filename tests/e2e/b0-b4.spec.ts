@@ -204,6 +204,16 @@ test('档案浮层可用 Esc 关闭并回到场景', async ({ page }) => {
   await expect(page.locator('.facility-map')).toBeVisible();
 });
 
+test('侧栏抽屉可折叠并展开', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.left .drawer-toggle').click();
+  await expect(page.locator('.left')).toHaveClass(/collapsed/);
+  await expect(page.locator('.left .drawer-content')).toBeHidden();
+  await page.locator('.left .drawer-toggle').click();
+  await expect(page.locator('.left')).not.toHaveClass(/collapsed/);
+  await expect(page.locator('.left .drawer-content')).toBeVisible();
+});
+
 test('档案库两组 12 项并可直接翻书', async ({ page }) => {
   await page.goto('/');
   await expect(page.locator('.archive-item')).toHaveCount(12);
