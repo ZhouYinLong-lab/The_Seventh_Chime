@@ -23,7 +23,7 @@ test('桌面端通过指令台完成首次查询并写入档案库', async ({ pa
   await openShows(page, 'R', '线路自检');
   await run(page, 'FILES');
   await expect(log(page)).toContainText('B0-R-KLARA · 线路自检');
-  await expect(page.locator('.archive-item').filter({ hasText: '线路自检' })).toBeVisible();
+  await expect(page.locator('.archive-item').filter({ hasText: '电讯区 收发记录' })).toBeVisible();
 });
 
 test('指令对大小写、分隔符与肉体顺序不敏感', async ({ page }) => {

@@ -8,7 +8,7 @@ const entryBody = (doc: ArchiveDocument, state: SaveV2, revealed: boolean, headi
 };
 // compare 模式保持历史输出（并排比较逐场景渲染）；entry 模式供整本档案阅读器使用（标题降为 h3）。
 export const sceneEntry = (doc: ArchiveDocument, state: SaveV2, revealed: boolean, mode: 'compare' | 'entry'): string => {
-  const heading = `<div class="archive-heading"><div><p class="eyebrow">${esc(doc.sceneId)}</p>${mode === 'compare' ? `<h2>${esc(doc.title)}</h2>` : `<h3>${esc(doc.title)}</h3>`}</div><div class="reader-actions"><button class="quiet" data-action="pin-doc" data-doc="${esc(doc.id)}">${state.pinnedDocIds.includes(doc.id) ? '取消固定' : '固定档案'}</button><button class="quiet" data-action="compare-doc" data-doc="${esc(doc.id)}">纳入比较</button></div></div>`;
+  const heading = `<div class="archive-heading"><div><p class="eyebrow">${esc(doc.sceneId)}</p>${mode === 'compare' ? `<h2>${esc(doc.title)}</h2>` : `<h3>${esc(doc.title)}</h3>`}</div><div class="reader-actions"><button class="quiet" data-action="pin-doc" data-doc="${esc(doc.id)}">${state.pinnedDocIds.includes(doc.id) ? '取消固定' : '固定档案'}</button><button class="quiet" data-action="compare-doc" data-doc="${esc(doc.id)}">${state.compareDocIds.includes(doc.id) ? '移出比较' : '纳入比较'}</button></div></div>`;
   const body = entryBody(doc, state, revealed, heading);
   if (mode === 'compare') return `<section id="reader" class="panel reader" tabindex="-1">${body}</section>`;
   return `<article class="entry${state.activeDoc === doc.id ? ' current' : ''}" id="entry-${esc(doc.sceneId)}" data-doc="${esc(doc.id)}">${body}</article>`;

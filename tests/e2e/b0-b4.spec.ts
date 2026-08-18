@@ -49,7 +49,7 @@ const showInference = async (page: Page) => {
 };
 
 const showQuery = async (page: Page) => {
-  const queryTab = page.locator('.mobile-nav').getByRole('button', { name: '查询' });
+  const queryTab = page.locator('.mobile-nav').getByRole('button', { name: '地图' });
   if (await queryTab.isVisible()) await queryTab.click();
 };
 
@@ -166,16 +166,46 @@ test('整本档案阅读器封条不泄场景标题，尝试解封给出线索�
 test('档案比较可进入和退出', async ({ page }) => {
   await page.goto('/');
   await query(page, 'b0', 'r_radio', ['klara'], '线路自检');
+  await page.locator('#reader .entry[data-doc="doc_b0_r_klara"]').getByRole('button', { name: '纳入比较' }).click();
   await query(page, 'b0', 'c_bell', ['niko'], '七钟校准');
-  const radio = page.locator('.archive-item').filter({ hasText: '线路自检' });
-  const bell = page.locator('.archive-item').filter({ hasText: '七钟校准' });
-  await radio.getByRole('button', { name: '比较' }).click();
-  await bell.getByRole('button', { name: '比较' }).click();
+  await page.locator('#reader .entry[data-doc="doc_b0_c_niko"]').getByRole('button', { name: '纳入比较' }).click();
   await expect(page.locator('.compare-reader .reader')).toHaveCount(2);
-  await radio.getByRole('button', { name: '移出比较' }).click();
+  await page.locator('.compare-reader .reader').filter({ hasText: '线路自检' }).getByRole('button', { name: '移出比较' }).click();
   await expect(page.locator('.compare-reader')).toHaveCount(0);
-  await bell.getByRole('button', { name: '移出比较' }).click();
-  await expect(bell.getByRole('button', { name: '比较' })).toBeVisible();
+  await page.locator('#reader .entry[data-doc="doc_b0_c_niko"]').getByRole('button', { name: '移出比较' }).click();
+  await expect(page.locator('#reader .entry[data-doc="doc_b0_c_niko"]').getByRole('button', { name: '纳入比较' })).toBeVisible();
+});
+
+test('地图点房间打开整本档案，名册点开人事卷宗', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('.room-card[data-archive="arch_loc_r_radio"]').click();
+  await expect(page.locator('#reader h2')).toHaveText('电讯区 收发记录');
+  await expect(page.locator('#reader .entry.seal')).toHaveCount(8);
+  await page.locator('.roster-card[data-archive="arch_person_verri"]').click();
+  await expect(page.locator('#reader h2')).toHaveText('《奥古斯托·维里 人事卷宗》');
+  await expect(page.locator('#reader .entry.seal')).toHaveCount(8);
+  for (const forbidden of ['灵魂', '占据', '圆环', '锚点', '实时版框', '规则修改', '肉体']) await expect(page.locator('body')).not.toContainText(forbidden);
+});
+
+test('档案库两组 12 项并可直接翻书', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('.archive-item')).toHaveCount(12);
+  await expect(page.locator('.archive-group h3').nth(0)).toHaveText('地点记录');
+  await expect(page.locator('.archive-group h3').nth(1)).toHaveText('人事档案');
+  await expect(page.locator('.archive-item').filter({ hasText: '《奥古斯托·维里 人事卷宗》' })).toContainText('已解封 0/8');
+  await page.locator('.archive-item').filter({ hasText: '电讯区 收发记录' }).getByRole('button').click();
+  await expect(page.locator('#reader h2')).toHaveText('电讯区 收发记录');
+});
+
+test('390px 移动端地图标签展示设施示意图且不横向溢出', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await expect(page.locator('.mobile-nav').getByRole('button', { name: '地图' })).toBeVisible();
+  await expect(page.locator('.facility-map')).toBeVisible();
+  await expect(page.locator('.facility-map .room-card')).toHaveCount(5);
+  await page.locator('.room-card[data-archive="arch_loc_c_bell"]').click();
+  await expect(page.locator('#reader h2')).toHaveText('钟楼 维护记录');
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
 test('移动端维持单栏 B0–B4 推演闭环', async ({ page }) => {

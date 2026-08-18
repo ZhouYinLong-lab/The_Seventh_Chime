@@ -7,7 +7,7 @@
     "dev": "vite",
     "typecheck": "tsc --noEmit",
     "validate:content": "node scripts/validate-content.mjs",
-    "test": "tsx --test tests/playable-slice.test.ts tests/terminal.test.ts tests/b7-timeline.test.ts tests/final-exam.test.ts tests/digest.test.ts tests/save.test.ts tests/exam-evidence.test.ts tests/archives.test.ts tests/archive-book.test.ts && node --test tests/content.test.mjs",
+    "test": "tsx --test tests/playable-slice.test.ts tests/terminal.test.ts tests/b7-timeline.test.ts tests/final-exam.test.ts tests/digest.test.ts tests/save.test.ts tests/exam-evidence.test.ts tests/archives.test.ts tests/archive-book.test.ts tests/map.test.ts && node --test tests/content.test.mjs",
     "test:e2e": "playwright test",
     "build:static": "npm run validate:content && npm run typecheck && npm run test && vite build && node scripts/verify-dist.mjs",
     "build": "npm run build:static && npm run test:e2e",
