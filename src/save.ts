@@ -1,8 +1,9 @@
 import { isSameOrientation } from './ring';
 import { deriveModifiedOccupancy, emptyModifiedFrameDraft, validateModifiedFrame } from './modified-frame';
 import { b7Events, b7TimeOptions, makeB7AlignmentDraft, validateB7Alignment } from './b7-timeline';
+import { EXAM_CATEGORIES, makeExamEvidenceDraft, validateExamEvidence } from './exam-evidence';
 import { examQuestions, makeExamDraft, validateExam } from './final-exam';
-import type { ArchiveDocument, ArchiveFilters, B7Alignment, BellId, BodyId, Character, DerivedOccupancyB5B7, EvidenceReference, FinalExam, HintState, HypothesisCell, HypothesisGrid, ModifiedFrameDraft, ModifiedFrameSubmission, Note, PlaytestEvent, SaveV2, SaveV3, SaveV4, TerminalEntry } from './types';
+import type { ArchiveDocument, ArchiveFilters, B7Alignment, BellId, BodyId, Character, DerivedOccupancyB5B7, EvidenceReference, ExamCategory, FinalExam, HintState, HypothesisCell, HypothesisGrid, ModifiedFrameDraft, ModifiedFrameSubmission, Note, PlaytestEvent, SaveV2, SaveV3, SaveV4, SaveV5, TerminalEntry } from './types';
 
 export const storageKey = 'btb.save.v1.current';
 export const backupKey = 'btb.save.v1.backup';
@@ -14,7 +15,7 @@ export const defaultFilters = (): ArchiveFilters => ({ bell: 'all', location: 'a
 const now = () => new Date().toISOString();
 export const defaultHintState = (): HintState => ({ nodeKey: 'b0-start', invalidQueries: 0, shownLevel: 0, interactionSinceHint: false, lastProgressAt: now() });
 const emptySaveV2 = (characters: Character[]): SaveV2 => ({ version: 2, discovered: [], read: [], annotations: {}, notes: [], hypotheses: createHypothesisGrid(characters.map((character) => character.id)), queryHistory: [], pinnedDocIds: [], compareDocIds: [], archiveFilters: defaultFilters(), stageSubmissions: {}, draftOriginalRing: [], hintState: defaultHintState(), playtestEvents: [], activeDoc: null, activeSegmentId: null, query: { bell: 'b0', location: 'h_admin', bodies: ['mara', 'kovac', 'verri'] }, attempts: 0, tab: 'query', updatedAt: now() });
-export const emptySave = (characters: Character[]): SaveV4 => ({ ...emptySaveV2(characters), version: 4, modifiedFrameDraft: emptyModifiedFrameDraft(), derivedOccupancyB5B7: null, terminalLog: [], b7AlignmentDraft: makeB7AlignmentDraft(), b7Alignment: null, finalExamDraft: makeExamDraft(), finalExam: null });
+export const emptySave = (characters: Character[]): SaveV5 => ({ ...emptySaveV2(characters), version: 5, modifiedFrameDraft: emptyModifiedFrameDraft(), derivedOccupancyB5B7: null, terminalLog: [], b7AlignmentDraft: makeB7AlignmentDraft(), b7Alignment: null, finalExamDraft: makeExamDraft(), finalExamEvidenceDraft: makeExamEvidenceDraft(), finalExam: null });
 
 const array = (value: unknown): string[] => Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : [];
 const records = (value: unknown): Record<string, unknown> => value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -56,7 +57,7 @@ const parseV2 = (source: Record<string, unknown>, context: SaveContext): SaveV2 
   const gridSource = records(source.hypotheses); const grid = createHypothesisGrid(context.characters.map((character) => character.id));
   for (const bell of hypothesisBells) { const sourceBell = records(gridSource[bell]); if (!Object.keys(sourceBell).length) return null; for (const body of ids) { const cell = records(sourceBell[body]); if (typeof cell.primaryCandidate !== 'string' && cell.primaryCandidate !== null || (typeof cell.primaryCandidate === 'string' && !ids.has(cell.primaryCandidate)) || typeof cell.uncertain !== 'boolean' || !Array.isArray(cell.evidenceRefs)) return null; const refs = cell.evidenceRefs.map((ref) => evidenceRef(ref, documentById)); if (refs.some((ref) => !ref)) return null; grid[bell][body] = { primaryCandidate: cell.primaryCandidate, uncertain: cell.uncertain, evidenceRefs: refs as EvidenceReference[] }; } }
   const history = Array.isArray(source.queryHistory) ? source.queryHistory.map((value) => records(value)) : null; if (!history) return null; const queryHistory = history.map((entry) => typeof entry.key === 'string' && validDate(entry.at) && ['found', 'locked', 'invalid'].includes(entry.result as string) && (entry.docId === undefined || typeof entry.docId === 'string' && documentIds.has(entry.docId)) ? { key: entry.key, at: entry.at as string, result: entry.result as SaveV2['queryHistory'][number]['result'], ...(typeof entry.docId === 'string' ? { docId: entry.docId } : {}) } : null); if (queryHistory.some((entry) => !entry)) return null;
-  const eventKinds = new Set<PlaytestEvent['kind']>(['query', 'invalid_query', 'unlock', 'revisit', 'compare', 'hint', 'b4_reveal', 'hypothesis_edit', 'ring_submit', 'modified_frame_reveal', 'modified_frame_edit', 'modified_frame_submit', 'terminal_command', 'b7_alignment_submit', 'final_exam_submit']); if (!Array.isArray(source.playtestEvents)) return null; const events = source.playtestEvents.map((value) => { const event = records(value); return eventKinds.has(event.kind as PlaytestEvent['kind']) && validDate(event.at) ? { kind: event.kind as PlaytestEvent['kind'], at: event.at as string, ...(records(event.detail) ? { detail: Object.fromEntries(Object.entries(records(event.detail)).filter(([, detail]) => ['string', 'number', 'boolean'].includes(typeof detail))) } : {}) } : null; }); if (events.some((event) => !event)) return null;
+  const eventKinds = new Set<PlaytestEvent['kind']>(['query', 'invalid_query', 'unlock', 'revisit', 'compare', 'hint', 'b4_reveal', 'hypothesis_edit', 'ring_submit', 'modified_frame_reveal', 'modified_frame_edit', 'modified_frame_submit', 'terminal_command', 'b7_alignment_submit', 'final_exam_submit', 'final_exam_evidence_edit']); if (!Array.isArray(source.playtestEvents)) return null; const events = source.playtestEvents.map((value) => { const event = records(value); return eventKinds.has(event.kind as PlaytestEvent['kind']) && validDate(event.at) ? { kind: event.kind as PlaytestEvent['kind'], at: event.at as string, ...(records(event.detail) ? { detail: Object.fromEntries(Object.entries(records(event.detail)).filter(([, detail]) => ['string', 'number', 'boolean'].includes(typeof detail))) } : {}) } : null; }); if (events.some((event) => !event)) return null;
   if (typeof source.attempts !== 'number' || source.attempts < 0 || !Number.isInteger(source.attempts) || !['query', 'archive', 'facts', 'world', 'notes', 'hypotheses'].includes(source.tab as string)) return null;
   return { ...fresh, version: 2, discovered, read, annotations, notes: savedNotes, hypotheses: grid, queryHistory: queryHistory as SaveV2['queryHistory'], pinnedDocIds: pinned, compareDocIds: compare, archiveFilters, stageSubmissions: stage, draftOriginalRing: draft, hintState, playtestEvents: events as PlaytestEvent[], activeDoc, activeSegmentId: activeSegment, query: { bell: query.bell as BellId, location: query.location, bodies: queryBodies }, attempts: source.attempts, tab: source.tab as SaveV2['tab'], updatedAt: source.updatedAt };
 };
@@ -70,6 +71,9 @@ const migrateV1 = (source: Record<string, unknown>, context: SaveContext): SaveV
 };
 const upgradeV2 = (save: SaveV2): SaveV3 => ({ ...save, version: 3, modifiedFrameDraft: emptyModifiedFrameDraft(), derivedOccupancyB5B7: null });
 const upgradeV3 = (save: SaveV3): SaveV4 => ({ ...save, version: 4, terminalLog: [], b7AlignmentDraft: makeB7AlignmentDraft(), b7Alignment: null, finalExamDraft: makeExamDraft(), finalExam: null });
+// 终局交叉门禁：B7-R 揭示 + 原始圆环 + 实时版框，三者缺一则不得推进对齐与答卷。
+export const endgamePrerequisites = (save: Pick<SaveV5, 'discovered' | 'stageSubmissions' | 'modifiedFrameSubmission'>): boolean => save.discovered.includes('doc_b7_r_klara_kovac_verri') && Boolean(save.stageSubmissions.originalRing?.correct) && Boolean(save.modifiedFrameSubmission?.correct);
+const upgradeV4 = (save: SaveV4): SaveV5 => ({ ...save, version: 5, finalExamEvidenceDraft: makeExamEvidenceDraft(), b7Alignment: endgamePrerequisites(save) ? save.b7Alignment : null, finalExam: null });
 const parseTerminalLog = (value: unknown): TerminalEntry[] | null => {
   if (!Array.isArray(value)) return null;
   const output: TerminalEntry[] = [];
@@ -102,6 +106,31 @@ const parseFinalExam = (value: unknown, ids: Set<string>): FinalExam | null => {
   const answers = parseExamDraft(source.answers, ids); if (!answers || !validateExam(answers)) return null;
   return { answers, submittedAt: source.submittedAt as string, correct: true };
 };
+const parseExamEvidenceDraft = (value: unknown, documentById: Map<string, ArchiveDocument>, discovered: string[]): Record<ExamCategory, EvidenceReference | null> | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const source = value as Record<string, unknown>;
+  const draft = makeExamEvidenceDraft();
+  for (const category of EXAM_CATEGORIES) {
+    const entry = source[category];
+    if (entry === null || entry === undefined) { draft[category] = null; continue; }
+    const ref = evidenceRef(entry, documentById);
+    if (!ref || !discovered.includes(ref.docId)) return null;
+    draft[category] = ref;
+  }
+  return draft;
+};
+const parseExamEvidence = (value: unknown, documentById: Map<string, ArchiveDocument>, discovered: string[]): Record<ExamCategory, EvidenceReference> | null => {
+  const draft = parseExamEvidenceDraft(value, documentById, discovered);
+  if (!draft || EXAM_CATEGORIES.some((category) => !draft[category])) return null;
+  return draft as Record<ExamCategory, EvidenceReference>;
+};
+const parseFinalExamV5 = (value: unknown, ids: Set<string>, documentById: Map<string, ArchiveDocument>, discovered: string[]): FinalExam | null => {
+  if (value === null) return null;
+  const source = records(value); if (source.correct !== true || !validDate(source.submittedAt)) return null;
+  const answers = parseExamDraft(source.answers, ids); if (!answers || !validateExam(answers)) return null;
+  const evidence = parseExamEvidence(source.evidence, documentById, discovered); if (!evidence || !validateExamEvidence(evidence, discovered)) return null;
+  return { answers, evidence, submittedAt: source.submittedAt as string, correct: true };
+};
 const parseV4 = (source: Record<string, unknown>, context: SaveContext): SaveV4 | null => {
   if (source.version !== 4) return null;
   const base = parseV3({ ...source, version: 3 }, context); if (!base) return null;
@@ -112,6 +141,19 @@ const parseV4 = (source: Record<string, unknown>, context: SaveContext): SaveV4 
   const finalExamDraft = parseExamDraft(source.finalExamDraft, ids); if (!finalExamDraft) return null;
   const finalExam = source.finalExam === undefined ? null : parseFinalExam(source.finalExam, ids); if (source.finalExam !== undefined && finalExam === null && source.finalExam !== null) return null;
   return { ...base, version: 4, terminalLog, b7AlignmentDraft, b7Alignment, finalExamDraft, finalExam };
+};
+const parseV5 = (source: Record<string, unknown>, context: SaveContext): SaveV5 | null => {
+  if (source.version !== 5) return null;
+  const base = parseV4({ ...source, version: 4 }, context); if (!base) return null;
+  // v5 严格门禁：已确认的对齐与答卷必须在终局前置齐备时才能存在，否则整档拒绝（回退空档）。
+  const gates = endgamePrerequisites(base);
+  if (base.b7Alignment && !gates) return null;
+  const documentById = new Map(context.documents.map((doc) => [doc.id, doc]));
+  const finalExamEvidenceDraft = parseExamEvidenceDraft(source.finalExamEvidenceDraft, documentById, base.discovered); if (!finalExamEvidenceDraft) return null;
+  const ids = new Set(context.characters.map((character) => character.id));
+  const finalExam = source.finalExam === undefined ? null : parseFinalExamV5(source.finalExam, ids, documentById, base.discovered); if (source.finalExam !== undefined && finalExam === null && source.finalExam !== null) return null;
+  if (finalExam && !gates) return null;
+  return { ...base, version: 5, finalExamEvidenceDraft, finalExam };
 };
 const parseModifiedDraft = (value: unknown, ids: Set<string>, documentById: Map<string, ArchiveDocument>, discovered: string[]): ModifiedFrameDraft | null => {
   const source = records(value); if (!Object.keys(source).length) return null;
@@ -136,8 +178,8 @@ const parseV3 = (source: Record<string, unknown>, context: SaveContext): SaveV3 
   else if (derivedRaw !== null) return null;
   return { ...base, version: 3, modifiedFrameDraft, ...(modifiedFrameSubmission ? { modifiedFrameSubmission } : {}), derivedOccupancyB5B7: modifiedFrameSubmission ? derivedRaw as DerivedOccupancyB5B7 : null };
 };
-export const migrateSave = (raw: unknown, characters: Character[], documents: ArchiveDocument[] = []): SaveV4 | null => { const source = records(raw); if (!Object.keys(source).length) return null; const context = contextFor(characters, documents); if (source.version === 4) return parseV4(source, context); if (source.version === 3) { const v3 = parseV3(source, context); return v3 ? upgradeV3(v3) : null; } if (source.version === 2) { const v2 = parseV2(source, context); return v2 ? upgradeV3(upgradeV2(v2)) : null; } if (source.version === 1) { const v1 = migrateV1(source, context); return v1 ? upgradeV3(upgradeV2(v1)) : null; } return null; };
-export const chooseNewestSave = (candidates: unknown[], characters: Character[], documents: ArchiveDocument[]) => candidates.map((candidate) => migrateSave(candidate, characters, documents)).filter((candidate): candidate is SaveV4 => Boolean(candidate)).sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))[0] ?? null;
+export const migrateSave = (raw: unknown, characters: Character[], documents: ArchiveDocument[] = []): SaveV5 | null => { const source = records(raw); if (!Object.keys(source).length) return null; const context = contextFor(characters, documents); if (source.version === 5) return parseV5(source, context); if (source.version === 4) { const v4 = parseV4(source, context); return v4 ? upgradeV4(v4) : null; } if (source.version === 3) { const v3 = parseV3(source, context); return v3 ? upgradeV4(upgradeV3(v3)) : null; } if (source.version === 2) { const v2 = parseV2(source, context); return v2 ? upgradeV4(upgradeV3(upgradeV2(v2))) : null; } if (source.version === 1) { const v1 = migrateV1(source, context); return v1 ? upgradeV4(upgradeV3(upgradeV2(v1))) : null; } return null; };
+export const chooseNewestSave = (candidates: unknown[], characters: Character[], documents: ArchiveDocument[]) => candidates.map((candidate) => migrateSave(candidate, characters, documents)).filter((candidate): candidate is SaveV5 => Boolean(candidate)).sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))[0] ?? null;
 export const loadSave = (characters: Character[], documents: ArchiveDocument[]) => { const candidates: unknown[] = []; for (const key of [storageKey, backupKey]) try { const raw = localStorage.getItem(key); if (raw) candidates.push(JSON.parse(raw)); } catch { /* unreadable storage is handled as an empty session */ } return chooseNewestSave(candidates, characters, documents) ?? emptySave(characters); };
-export const persistSave = (state: SaveV4): boolean => { try { state.updatedAt = now(); const current = localStorage.getItem(storageKey); localStorage.setItem(backupKey, current || ''); localStorage.setItem(storageKey, JSON.stringify(state)); return true; } catch { return false; } };
-export const recordEvent = (state: SaveV4, kind: PlaytestEvent['kind'], detail?: PlaytestEvent['detail']) => { state.playtestEvents.push({ kind, at: now(), ...(detail ? { detail } : {}) }); };
+export const persistSave = (state: SaveV5): boolean => { try { state.updatedAt = now(); const current = localStorage.getItem(storageKey); localStorage.setItem(backupKey, current || ''); localStorage.setItem(storageKey, JSON.stringify(state)); return true; } catch { return false; } };
+export const recordEvent = (state: SaveV5, kind: PlaytestEvent['kind'], detail?: PlaytestEvent['detail']) => { state.playtestEvents.push({ kind, at: now(), ...(detail ? { detail } : {}) }); };

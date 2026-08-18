@@ -78,4 +78,18 @@ if (answerQuestionIds.join('|') !== expectedAnswers.join('|')) fail('终局答�
 const counts = { verri: 0, niko: 0, kovac: 0 };
 for (const [answer] of author.finalAnswers) { if (!(answer in counts)) fail(`终局答卷答案 ${answer} 不是有效肉体。`); counts[answer] += 1; }
 if (counts.verri !== 4 || counts.niko !== 3 || counts.kovac !== 2) fail('终局答卷的答案分布与基线不符。');
-console.log(`内容校验通过：${sceneIds.length} 个场景、${publicData.documents.length} 份玩家档案、${items.length} 件物品、${worldEntries.length} 条背景、B7 顺序固定、终局答卷九项固定。`);
+const expectedExamEvidence = ['body_location', 'soul_identity', 'causal_continuity'];
+const b7Chain = ['doc_b4_r_klara', 'doc_b3_j_livia', 'doc_b4_j_livia', 'doc_b5_h_kovac_verri', 'doc_b5_r_mara_klara', 'doc_b5_j_livia', 'doc_b6_r_mara_klara', 'doc_b6_h_mateo_kovac_verri', 'doc_b6_j_livia', 'doc_b7_r_klara_kovac_verri'];
+if (!author.examEvidence || typeof author.examEvidence !== 'object' || Array.isArray(author.examEvidence)) fail('终局证据白名单必须存在。');
+const evidenceCategories = Object.keys(author.examEvidence);
+if (evidenceCategories.join('|') !== expectedExamEvidence.join('|')) fail('终局证据白名单必须恰有三类且顺序固定。');
+for (const category of expectedExamEvidence) {
+  const docs = author.examEvidence[category];
+  if (!Array.isArray(docs) || docs.length < 2 || docs.length > 3 || new Set(docs).size !== docs.length) fail(`${category} 的证据白名单必须含 2–3 份去重档案。`);
+  for (const id of docs) {
+    if (!documentIds.has(id)) fail(`${category} 的证据白名单引用不存在的档案：${id}。`);
+    if (!b7Chain.includes(id)) fail(`${category} 的证据白名单档案 ${id} 不在 B7 链上。`);
+  }
+}
+if (new Set(expectedExamEvidence.flatMap((category) => author.examEvidence[category])).size < 3) fail('终局证据白名单并集必须至少覆盖三份档案。');
+console.log(`内容校验通过：${sceneIds.length} 个场景、${publicData.documents.length} 份玩家档案、${items.length} 件物品、${worldEntries.length} 条背景、B7 顺序固定、终局答卷九项固定、终局证据白名单三类固定。`);

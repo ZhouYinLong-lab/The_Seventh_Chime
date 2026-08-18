@@ -37,14 +37,18 @@ test('面板只在发现 B7-R 后出现', () => {
   assert.ok(!panel.includes('time:'), '面板不应出现明文时刻字段');
 });
 
-test('v4 存档携带 B7 对齐草稿与确认结果往返', () => {
-  const save = emptySave(content.characters);
-  save.discovered.push('doc_b7_r_klara_kovac_verri');
-  save.b7AlignmentDraft = { ...correct, shot: '23:00:43' };
-  save.b7Alignment = { assigned: { ...correct }, submittedAt: '2026-08-18T00:00:00.000Z', correct: true };
-  const reloaded = migrateSave(JSON.parse(JSON.stringify(save)), content.characters, content.documents);
-  assert.equal(reloaded?.b7Alignment?.correct, true);
-  assert.equal(reloaded?.b7AlignmentDraft.shot, '23:00:43');
+test('v4 存档在门禁缺失时剥离对齐但保留草稿', () => {
+  const v4 = JSON.parse(JSON.stringify(emptySave(content.characters))) as Record<string, unknown>;
+  v4.version = 4; delete v4.finalExamEvidenceDraft;
+  v4.discovered = ['doc_b7_r_klara_kovac_verri'];
+  v4.b7AlignmentDraft = { ...correct, shot: '23:00:43' };
+  v4.b7Alignment = { assigned: { ...correct }, submittedAt: '2026-08-18T00:00:00.000Z', correct: true };
+  const reloaded = migrateSave(v4, content.characters, content.documents);
+  assert.ok(reloaded, '宽容迁移不拒绝旧档');
+  assert.equal(reloaded?.version, 5);
+  assert.equal(reloaded?.b7Alignment, null, '缺少圆环／版框时对齐确认被剥离');
+  assert.equal(reloaded?.b7AlignmentDraft.shot, '23:00:43', '对齐草稿保留可重交');
+  assert.deepEqual(reloaded?.finalExamEvidenceDraft, { body_location: null, soul_identity: null, causal_continuity: null }, '迁移建立空证据草稿');
 });
 
 test('损坏的 B7 对齐确认会被拒绝', () => {

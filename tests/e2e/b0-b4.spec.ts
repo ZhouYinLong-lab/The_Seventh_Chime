@@ -183,6 +183,14 @@ const submitFinalExam = async (page: Page, answers: Record<string, string>) => {
   for (const [questionId, character] of Object.entries(answers)) await page.locator(`select[data-exam-index="${EXAM_ORDER.indexOf(questionId)}"]`).selectOption(character);
 };
 
+const citeExamEvidence = async (page: Page, category: string, bell: string, location: string, bodies: string[], title: string) => {
+  await showQuery(page);
+  await query(page, bell, location, bodies, title);
+  await page.locator('#reader').getByRole('button', { name: '选中本段' }).first().click();
+  await showInference(page);
+  await page.locator(`button[data-action="add-exam-evidence"][data-category="${category}"]`).click();
+};
+
 test('桌面端完成 B7 秒级对齐与终局答卷，错误提交被拒，刷新后保留', async ({ page }) => {
   await page.goto('/');
   await completeLiveFramePrerequisites(page);
@@ -217,9 +225,15 @@ test('桌面端完成 B7 秒级对齐与终局答卷，错误提交被拒，刷�
     frame_modifier: 'verri',
     anchored_body: 'niko',
   };
+  await submitFinalExam(page, answers);
+  await page.getByRole('button', { name: '提交答卷' }).click();
+  await expect(page.getByText('请先回答全部九项，并为身体／地点、灵魂指认、因果连续三个类别各引用一段来自已发现档案的证据（至少来自两份档案），再提交答卷。')).toBeVisible();
+  await citeExamEvidence(page, 'body_location', 'b4', 'j_medical', ['livia'], '找错地方的枪');
+  await citeExamEvidence(page, 'soul_identity', 'b6', 'j_medical', ['livia'], '尼科的警告');
+  await citeExamEvidence(page, 'causal_continuity', 'b5', 'r_radio', ['mara', 'klara'], '两种条件才能发报');
   await submitFinalExam(page, { ...answers, dead_soul: 'mara' });
   await page.getByRole('button', { name: '提交答卷' }).click();
-  await expect(page.getByText('这组答卷与证据冲突。每条结论都必须由至少两处独立证据支撑；系统不会指出应替换哪一项。')).toBeVisible();
+  await expect(page.getByText('这组答卷与证据冲突。九项结论需要身体／地点、灵魂指认与因果连续三类证据共同支撑，且证据须来自至少两份不同档案；系统不会指出应替换哪一项。')).toBeVisible();
   await submitFinalExam(page, answers);
   await page.getByRole('button', { name: '提交答卷' }).click();
   await expect(page.getByRole('heading', { name: '三角还原' })).toBeVisible();

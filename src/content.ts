@@ -1,5 +1,5 @@
-import rawContent from './data/public-content.json';
-import rawExtended from './data/extended-documents.json';
+import rawContent from './data/public-content.json' with { type: 'json' };
+import rawExtended from './data/extended-documents.json' with { type: 'json' };
 import type { ArchiveDocument, BodyId, Content, LocationId, QueryState } from './types';
 const base = rawContent as unknown as Content;
 const extended = rawExtended as unknown as ArchiveDocument[];

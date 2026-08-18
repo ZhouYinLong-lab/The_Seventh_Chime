@@ -1,5 +1,5 @@
 import { sha256Hex } from './digest';
-import type { B7TimelineEvent, SaveV4 } from './types';
+import type { B7TimelineEvent, SaveV5 } from './types';
 
 // B7 秒级物证对齐：把七件机器事件对齐到固定时刻。事件顺序与作者基线 b7Timeline 完全一致；
 // 时刻只作为下拉选项明文存在，事件与时刻的对应关系以摘要形式分发，校验时重算比对。
@@ -24,10 +24,10 @@ export const b7AlignmentDigests: Record<string, string> = {
 };
 export const b7TimeOptions = ['23:00:00', '23:00:08', '23:00:26', '23:00:38', '23:00:39', '23:00:43', '23:01:12'];
 export const makeB7AlignmentDraft = (): Record<string, string> => Object.fromEntries(b7Events.map((event) => [event.id, '']));
-export const b7AlignmentAvailable = (state: Pick<SaveV4, 'discovered'>) => state.discovered.includes('doc_b7_r_klara_kovac_verri');
+export const b7AlignmentAvailable = (state: Pick<SaveV5, 'discovered'>) => state.discovered.includes('doc_b7_r_klara_kovac_verri');
 export const validateB7Alignment = (assigned: Record<string, string>): boolean => b7Events.every((event) => sha256Hex(B7_SALT + event.id + ':' + assigned[event.id]) === b7AlignmentDigests[event.id]);
 const esc = (value: string) => value.replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char] ?? char);
-export const b7AlignmentPanel = (state: SaveV4) => {
+export const b7AlignmentPanel = (state: SaveV5) => {
   if (!b7AlignmentAvailable(state)) return '';
   const submitted = Boolean(state.b7Alignment?.correct);
   const values = state.b7AlignmentDraft;
