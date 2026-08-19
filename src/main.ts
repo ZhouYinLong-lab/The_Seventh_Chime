@@ -17,7 +17,7 @@ import type { ArchiveDocument, EvidenceReference, ExamCategory, SaveV5 } from '.
 const app = document.querySelector<HTMLElement>('#app');
 if (!app) throw new Error('缺少应用根节点。');
 let state = loadSave(content.characters, content.documents);
-let feedback = '从四份 B0 记录开始：每一份都由时段、地点与角色组合定位。';
+let feedback = '你是港务局派来的调查员。从四份 B0 记录开始：每一份都由时段、地点与角色组合定位。';
 let storageNotice = '';
 let terminalCursor: number | null = null;
 // 档案层瞬态：当前打开的整本档案、封条反馈与定位标记。不进存档，刷新后由 activeDoc 派生回落。
@@ -27,9 +27,14 @@ let overlayOpen = false;
 let introOpen = localStorage.getItem('btb.intro.seen') !== '1';
 const drawers = { left: true, right: true };
 let shouldPosition = false;
-const saveAndRender = () => { if (persistSave(state)) storageNotice = ''; else storageNotice = '浏览器未能写入本地进度。请立即导出进度后检查存储空间或隐私设置。'; render(app, state, feedback, isB4Revealed(state.discovered), storageNotice, { activeArchive, sealNotice, overlayOpen, drawers, introOpen }); if (introOpen) document.querySelector<HTMLElement>('.intro')?.focus(); if (shouldPosition) { shouldPosition = false; const doc = state.activeDoc ? documents.get(state.activeDoc) : undefined; if (doc) document.querySelector<HTMLElement>(`#entry-${doc.sceneId}`)?.scrollIntoView({ block: 'center' }); } };
+// 首屏可及（PM 批次一 1c）：仅首次把左栏视口定位到终端输入框顶，使完整查询表单（时段/地点/勾选/检索）无需滚动即可用。
+let initialPositioned = false;
+const positionInitialView = () => { if (initialPositioned) return; initialPositioned = true; if (introOpen) return; const left = document.querySelector<HTMLElement>('.left'); const input = document.querySelector<HTMLElement>('#terminal-input'); if (left && input) left.scrollTop = Math.round(input.getBoundingClientRect().top - left.getBoundingClientRect().top) + 20; };
+const saveAndRender = () => { if (persistSave(state)) storageNotice = ''; else storageNotice = '浏览器未能写入本地进度。请立即导出进度后检查存储空间或隐私设置。'; // 捕获滚动容器位置：innerHTML 全量重渲染会重置 scrollTop，普通重渲染后恢复；仅 shouldPosition 的有意滚动不受影响。
+  const scroll = { left: document.querySelector<HTMLElement>('.left')?.scrollTop ?? 0, right: document.querySelector<HTMLElement>('.right')?.scrollTop ?? 0 };
+  render(app, state, feedback, isB4Revealed(state.discovered), storageNotice, { activeArchive, sealNotice, overlayOpen, drawers, introOpen }); if (introOpen) document.querySelector<HTMLElement>('.intro')?.focus(); if (shouldPosition) { shouldPosition = false; const doc = state.activeDoc ? documents.get(state.activeDoc) : undefined; if (doc) document.querySelector<HTMLElement>(`#entry-${doc.sceneId}`)?.scrollIntoView({ block: 'center' }); } else { const left = document.querySelector<HTMLElement>('.left'); if (left) left.scrollTop = scroll.left; const right = document.querySelector<HTMLElement>('.right'); if (right) right.scrollTop = scroll.right; } };
 const closeFile = () => { overlayOpen = false; sealNotice = null; saveAndRender(); };
-const closeIntro = () => { introOpen = false; try { localStorage.setItem('btb.intro.seen', '1'); } catch { /* 存储失败仅影响重播 */ } saveAndRender(); };
+const closeIntro = () => { introOpen = false; try { localStorage.setItem('btb.intro.seen', '1'); } catch { /* 存储失败仅影响重播 */ } saveAndRender(); positionInitialView(); };
 const download = (name: string, value: unknown) => { const url = URL.createObjectURL(new Blob([JSON.stringify(value, null, 2)], { type: 'application/json' })); const link = Object.assign(document.createElement('a'), { href: url, download: name }); link.click(); URL.revokeObjectURL(url); };
 const markInteraction = () => { if (state.hintState.shownLevel) state.hintState.interactionSinceHint = true; };
 const resetHintsForProgress = () => { state.hintState = resetHintState(currentProgressNode(state.discovered)); };
@@ -45,6 +50,8 @@ const countInvalid = (key: string, locked: boolean) => {
   state.hintState.invalidQueries += 1;
   recordEvent(state, 'invalid_query', { key, locked, node });
 };
+// 开局公开的四组 B0 档案（「已知方向」空态即展示），供无效检索按已公开组合差分。
+const OPENING_ARCHIVE_KEYS = new Set(['b0-h_admin', 'b0-r_radio', 'b0-j_medical', 'b0-c_bell']);
 const executeQuery = (): QueryResult => {
   const doc = findByQuery(content.documents, state.query);
   const key = queryKey(state.query);
@@ -52,13 +59,21 @@ const executeQuery = (): QueryResult => {
     const revisiting = state.discovered.includes(doc.id);
     recordEvent(state, 'query', { key, docId: doc.id });
     if (revisiting) recordEvent(state, 'revisit', { docId: doc.id, via: 'query' });
+    const firstFind = !state.queryHistory.some((entry) => entry.result === 'found');
     state.queryHistory.push({ key, at: new Date().toISOString(), result: 'found', docId: doc.id });
     discover(doc.id);
-    feedback = revisiting ? `重新打开：${doc.title}。` : `已找到：${doc.title}。`;
+    feedback = revisiting ? `重新打开：${doc.title}。` : firstFind ? `已找到：${doc.title}。同一记录只能由时段×地点×在场角色精确组合定位。` : `已找到：${doc.title}。`;
     return 'found';
   }
   countInvalid(key, Boolean(doc));
-  feedback = doc ? '当前线索尚不足以确认这条记录。继续检查已经打开的档案。' : '没有找到符合这些条件的主要记录。';
+  if (!doc) {
+    const pair = `${state.query.bell}-${state.query.location}`;
+    feedback = OPENING_ARCHIVE_KEYS.has(pair) || state.discovered.some((id) => { const found = documents.get(id); return found !== undefined && `${found.bell}-${found.location}` === pair; })
+      ? '该时段与地点已有记录；请核对在场角色。'
+      : '没有找到符合这些条件的主要记录。';
+  } else {
+    feedback = '当前线索尚不足以确认这条记录。继续检查已经打开的档案。';
+  }
   return doc ? 'locked' : 'invalid';
 };
 const toggleCompare = (id: string) => { state.compareDocIds = state.compareDocIds.includes(id) ? state.compareDocIds.filter((item) => item !== id) : [...state.compareDocIds.slice(-1), id]; recordEvent(state, 'compare', { docId: id, selected: state.compareDocIds.includes(id) }); saveAndRender(); };
@@ -119,7 +134,9 @@ const hintAction = (): string | null => {
   const node = currentProgressNode(state.discovered);
   if (!hintAvailable(state.hintState, node)) return null;
   const level = (state.hintState.shownLevel + 1) as 1 | 2 | 3 | 4;
-  feedback = hintFor(node, level);
+  const layers: string[] = [];
+  for (let shown = 1 as const; shown <= level; shown++) layers.push(hintFor(node, shown));
+  feedback = `方向提示 ${level}/4：${layers.join('；')}`;
   state.hintState.shownLevel = level;
   state.hintState.interactionSinceHint = false;
   recordEvent(state, 'hint', { level, node });
@@ -170,7 +187,7 @@ app.addEventListener('change', (event) => {
   if (target.id === 'note-text') return;
   if (target.id === 'bell') state.query.bell = target.value as SaveV5['query']['bell'];
   else if (target.id === 'location') state.query.location = target.value;
-  else if (target instanceof HTMLInputElement && target.dataset.body) { const body = target.dataset.body; state.query.bodies = target.checked ? [...state.query.bodies, body].slice(0, 3) : state.query.bodies.filter((id) => id !== body); }
+  else if (target instanceof HTMLInputElement && target.dataset.body) { const body = target.dataset.body; if (target.checked) { if (state.query.bodies.includes(body)) { /* 幂等：已选中 */ } else if (state.query.bodies.length >= 3) { feedback = '此时段最多登记三位在场者；请先取消一位再勾选。'; } else state.query.bodies = [...state.query.bodies, body]; } else state.query.bodies = state.query.bodies.filter((id) => id !== body); }
   else if (target.dataset.filter) state.archiveFilters[target.dataset.filter as keyof SaveV5['archiveFilters']] = target.value as never;
   else if (target.dataset.hypBell && target.dataset.hypBody) { const cell = state.hypotheses[target.dataset.hypBell as keyof SaveV5['hypotheses']][target.dataset.hypBody]; cell.primaryCandidate = target.value || null; recordEvent(state, 'hypothesis_edit', { bell: target.dataset.hypBell, body: target.dataset.hypBody }); }
   else if (target instanceof HTMLInputElement && target.dataset.hypUncertain) { const [bell, body] = target.dataset.hypUncertain.split(':'); state.hypotheses[bell as keyof SaveV5['hypotheses']][body].uncertain = target.checked; recordEvent(state, 'hypothesis_edit', { bell, body, uncertain: target.checked }); }
@@ -187,6 +204,7 @@ app.addEventListener('click', (event) => {
   const action = button.dataset.action; const docId = button.dataset.doc || '';
   if (action === 'query') { executeQuery(); return saveAndRender(); }
   if (action === 'open') return openDoc(docId);
+  if (action === 'close-file') return closeFile();
   if (action === 'toggle-drawer') { const side = button.dataset.drawer; if (side === 'left' || side === 'right') drawers[side] = !drawers[side]; return saveAndRender(); }
   if (action === 'enter-intro') return closeIntro();
   if (action === 'show-intro') { introOpen = true; return saveAndRender(); }
@@ -198,7 +216,7 @@ app.addEventListener('click', (event) => {
   if (action === 'select-segment') { state.activeDoc = docId; state.activeSegmentId = button.dataset.segment || null; return saveAndRender(); }
   if (action === 'tag') { const key = `${button.dataset.segment}:${button.dataset.tag}`; const tags = state.annotations[docId] || []; state.annotations[docId] = tags.includes(key) ? tags.filter((tag) => tag !== key) : [...tags, key]; state.activeDoc = docId; state.activeSegmentId = button.dataset.segment || null; return saveAndRender(); }
   if (action === 'quote-segment') { const doc = documents.get(docId); const segment = doc?.segments.find((item) => item.id === button.dataset.segment); if (segment) { state.activeDoc = docId; state.activeSegmentId = segment.id; state.notes.push({ id: crypto.randomUUID(), text: `摘录：${segment.text}`, refs: [{ docId, segmentId: segment.id }] }); } return saveAndRender(); }
-  if (action === 'add-note') { const input = document.querySelector<HTMLTextAreaElement>('#note-text'); if (input?.value.trim()) state.notes.push({ id: crypto.randomUUID(), text: input.value.trim(), refs: state.activeDoc ? [{ docId: state.activeDoc, ...(state.activeSegmentId ? { segmentId: state.activeSegmentId } : {}) }] : [] }); return saveAndRender(); }
+  if (action === 'add-note') { const input = document.querySelector<HTMLTextAreaElement>('#note-text'); if (input?.value.trim()) state.notes.push({ id: crypto.randomUUID(), text: input.value.trim(), refs: state.activeDoc ? [{ docId: state.activeDoc, ...(state.activeSegmentId ? { segmentId: state.activeSegmentId } : {}) }] : [] }); else feedback = '笔记为空，未保存。'; return saveAndRender(); }
   if (action === 'delete-note') { state.notes.splice(Number(button.dataset.index), 1); return saveAndRender(); }
   if (action === 'hint') { hintAction(); return saveAndRender(); }
   if (action === 'use-current-evidence') { const bell = button.dataset.hypBell as keyof SaveV5['hypotheses']; const body = button.dataset.hypBody!; if (state.activeDoc && state.activeSegmentId) { const cell = state.hypotheses[bell][body]; const ref = { docId: state.activeDoc, segmentId: state.activeSegmentId }; if (!cell.evidenceRefs.some((item) => item.docId === ref.docId && item.segmentId === ref.segmentId)) cell.evidenceRefs.push(ref); recordEvent(state, 'hypothesis_edit', { bell, body, evidence: state.activeDoc, segment: state.activeSegmentId }); } else feedback = '先在档案阅读器中选中一个具体段落，再把它放入假设格。'; return saveAndRender(); }
@@ -219,3 +237,4 @@ app.addEventListener('click', (event) => {
 });
 render(app, state, feedback, isB4Revealed(state.discovered), storageNotice, { activeArchive, sealNotice, overlayOpen, drawers, introOpen });
 if (introOpen) document.querySelector<HTMLElement>('.intro')?.focus();
+positionInitialView();

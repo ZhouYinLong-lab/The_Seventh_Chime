@@ -116,9 +116,9 @@ test('标签筛选只依据玩家已标注的段落', () => {
   assert.deepEqual(filteredDocuments(content.documents, save).map((doc) => doc.id), ['doc_b0_r_klara']);
 });
 
-test('提示按当前推进节点在八次无效查询后逐级开放', () => {
-  const save = emptySave(content.characters); const node = currentProgressNode(save.discovered); save.hintState.nodeKey = node; save.hintState.invalidQueries = 7;
-  assert.ok(!hintAvailable(save.hintState, node)); save.hintState.invalidQueries = 8;
+test('提示按当前推进节点在三次无效查询后逐级开放', () => {
+  const save = emptySave(content.characters); const node = currentProgressNode(save.discovered); save.hintState.nodeKey = node; save.hintState.invalidQueries = 2;
+  assert.ok(!hintAvailable(save.hintState, node)); save.hintState.invalidQueries = 3;
   assert.ok(hintAvailable(save.hintState, node));
   for (const level of [1, 2, 3, 4] as const) assert.ok(hintFor(node, level).length > 0);
 });

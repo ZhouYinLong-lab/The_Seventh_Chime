@@ -9,7 +9,7 @@ export const currentProgressNode = (discovered: string[]): string => {
   return content.documents.find((doc) => !discovered.includes(doc.id) && isReady(doc, discovered))?.id ?? (discovered.includes('doc_b4_a_mateo') ? 'b4-ring' : 'b0-start');
 };
 export const resetHintState = (nodeKey: string): HintState => ({ nodeKey, invalidQueries: 0, shownLevel: 0, interactionSinceHint: false, lastProgressAt: new Date().toISOString() });
-export const hintAvailable = (state: HintState, nodeKey: string, now = Date.now()) => state.nodeKey === nodeKey && state.shownLevel < 4 && (state.shownLevel === 0 ? state.invalidQueries >= 8 || now - Date.parse(state.lastProgressAt) >= 15 * 60_000 : state.interactionSinceHint);
+export const hintAvailable = (state: HintState, nodeKey: string, now = Date.now()) => state.nodeKey === nodeKey && state.shownLevel < 4 && (state.shownLevel === 0 ? state.invalidQueries >= 3 || now - Date.parse(state.lastProgressAt) >= 15 * 60_000 : state.interactionSinceHint);
 const nodeDocument = (node: string): ArchiveDocument | undefined => content.documents.find((doc) => doc.id === node);
 const bodyNames = (doc: ArchiveDocument) => doc.bodies.map((id) => content.characters.find((character) => character.id === id)?.cn ?? id).join('、');
 export const hintFor = (node: string, level: 1 | 2 | 3 | 4) => {
