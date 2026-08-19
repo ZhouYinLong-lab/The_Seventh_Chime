@@ -1,8 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
 
 const terminalInput = (page: Page) => page.locator('#terminal-input');
-const run = async (page: Page, command: string) => { await terminalInput(page).fill(command); await terminalInput(page).press('Enter'); };
+const run = async (page: Page, command: string) => { await page.keyboard.press('Escape'); await terminalInput(page).fill(command); await terminalInput(page).press('Enter'); };
 const log = (page: Page) => page.locator('.terminal-log');
+const closeOverlay = async (page: Page) => { await page.keyboard.press('Escape'); await expect(page.locator('.overlay')).toHaveCount(0); };
 
 const ARCHIVE_TITLES: Record<string, string> = {
   H: '值班台与配枪登记',
@@ -53,6 +54,7 @@ test('Tab 补全仅针对已发现档案', async ({ page }) => {
   await terminalInput(page).press('Tab');
   await expect(terminalInput(page)).toHaveValue('B0-');
   await run(page, 'OPEN B0-C-NIKO');
+  await closeOverlay(page);
   await terminalInput(page).fill('B0-');
   await terminalInput(page).press('Tab');
   await expect(terminalInput(page)).toHaveValue('B0-C-NIKO ');
@@ -93,6 +95,7 @@ test('刷新后指令日志与发现状态保留', async ({ page }) => {
   await page.reload();
   await expect(log(page)).toContainText('> OPEN B0-R-KLARA');
   await expect(log(page)).toContainText('B0-R-KLARA · 线路自检');
+  await run(page, 'OPEN B0-R-KLARA');
   await openShows(page, 'R', '线路自检');
 });
 
@@ -175,6 +178,7 @@ test('导出进度后在新会话导入，发现与推演状态完整迁移', as
   await page.goto('/');
   await run(page, 'OPEN B0-R-KLARA');
   await run(page, 'OPEN B0-C-NIKO');
+  await closeOverlay(page);
   await page.locator('#note-text').fill('B0 线路自检纸带完整传递长句。');
   await page.getByRole('button', { name: '保存笔记' }).click();
   await expect(page.getByText('B0 线路自检纸带完整传递长句。')).toBeVisible();
@@ -183,7 +187,7 @@ test('导出进度后在新会话导入，发现与推演状态完整迁移', as
   const savePath = await (await downloadPromise).path();
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await expect(page.locator('.reader.empty')).toBeVisible();
+  await expect(page.locator('#reader')).toHaveCount(0);
   await page.locator('#import-file').setInputFiles(savePath as string);
   await expect(page.locator('.terminal-log')).toContainText('B0-R-KLARA');
   await expect(page.locator('body')).toContainText('已解锁 2 份');
@@ -219,6 +223,7 @@ test('390px 移动端右栏按标签分页，非当前面板不同屏堆叠', as
     ['OPEN B4-A-MATEO', '原始校样'],
   ];
   for (const [command] of reveal) await run(page, command);
+  await closeOverlay(page);
   const tabs = ['facts', 'world', 'notes', 'hypotheses'] as const;
   for (const tab of tabs) {
     await page.locator(`[data-action="tab"][data-tab="${tab}"]`).click();
