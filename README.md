@@ -1,3 +1,5 @@
+#### [暂时封存] 灵感来源于type help，婆罗洲的红珍珠等经典游戏。目前我认为核心机制有一点意思、但剧本并不好，待学习叙事技巧、游戏性设计后继续推进。
+
 # 《黑潮钟》 / The Seventh Chime
 
 [![在线试玩](https://img.shields.io/badge/在线试玩-the_seventh_chime.zylatent.com-2e5f5c?style=flat-square)](http://the_seventh_chime.zylatent.com/)
